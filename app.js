@@ -662,17 +662,25 @@ function renderSettings() {
     save(); renderHeader();
   }));
 
+// aufgeklappte Kategorien merken, damit sie nach dem Bearbeiten offen bleiben
+const openCatalogCats = new Set();
+
 function renderCatalogList() {
+  $('#catCount').textContent = `${state.catalog.length} Artikel`;
   $('#catalogList').innerHTML = CATEGORIES.map((cat) => {
     const items = state.catalog.filter((i) => i.cat === cat);
     if (!items.length) return '';
-    return `<div class="row" style="background:var(--bg)"><div class="main meta" style="font-weight:600">${esc(cat)}</div></div>` +
+    return `<details class="fold catfold" data-cat="${esc(cat)}" ${openCatalogCats.has(cat) ? 'open' : ''}>
+      <summary><span class="foldtitle">${esc(cat)}</span><span class="foldcount">${items.length}</span><span class="foldchev">›</span></summary>` +
       items.map((i) => `
         <button class="row rowbtn" data-edit="${esc(i.id)}">
           <div class="main"><div class="title">${esc(i.name)}</div>${i.len ? '<div class="meta">mit Länge</div>' : ''}</div>
           <span class="chev">›</span>
-        </button>`).join('');
+        </button>`).join('') + `</details>`;
   }).join('');
+  $('#catalogList').querySelectorAll('.catfold').forEach((d) => d.addEventListener('toggle', () => {
+    if (d.open) openCatalogCats.add(d.dataset.cat); else openCatalogCats.delete(d.dataset.cat);
+  }));
   $('#catalogList').querySelectorAll('[data-edit]').forEach((b) => b.addEventListener('click', () => {
     openCatalogSheet(state.catalog.find((i) => i.id === b.dataset.edit));
   }));
@@ -701,6 +709,8 @@ function openCatalogSheet(item) {
     if (!name) { $('#kName').focus(); return; }
     const dup = state.catalog.some((i) => i.cat === cat && i.name.toLowerCase() === name.toLowerCase() && (isNew || i.id !== item.id));
     if (dup) { toast('Diesen Artikel gibt es schon'); return; }
+    openCatalogCats.add(cat);
+    $('#catalogWrap').open = true;
     if (isNew) catalogOp({ type: 'add', item: { id: uid(), cat, name, len } });
     else catalogOp({ type: 'update', id: item.id, fields: { cat, name, len } });
     closeSheet();

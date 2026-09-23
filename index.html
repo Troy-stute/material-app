@@ -79,6 +79,16 @@
   .stock small { font-size: 13px; font-weight: 500; color: var(--muted); }
   .stock.low { color: var(--danger); }
   #invFilter { margin-bottom: 4px; }
+  .fold > summary { list-style: none; cursor: pointer; }
+  .fold > summary::-webkit-details-marker { display: none; }
+  .foldhead { display: flex; align-items: center; gap: 10px; padding: 14px; font-weight: 600; }
+  .foldtitle { flex: 1; }
+  .foldcount { color: var(--muted); font-size: 14px; font-weight: 500; }
+  .foldchev { color: var(--muted); font-size: 22px; line-height: 1; transition: transform .15s; }
+  .fold[open] > summary .foldchev { transform: rotate(90deg); }
+  .catfold > summary { display: flex; align-items: center; gap: 10px; padding: 11px 14px; background: var(--bg);
+    border-top: 1px solid var(--line); color: var(--muted); font-size: 14px; font-weight: 600; }
+  .catfold .rowbtn:first-of-type { border-top: 1px solid var(--line); }
   .mailpreview { background: #ffffff; border-radius: 10px; padding: 10px; overflow-x: auto; }
   .syncbox { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 550; }
   .syncdot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); flex: none; }
@@ -177,7 +187,7 @@
       <span></span><button data-k="0">0</button><button class="plain" data-k="del" aria-label="Löschen">⌫</button>
     </div>
     <label class="switch"><input type="checkbox" id="lockRemember"> Auf diesem Gerät merken</label>
-    <div class="hint" style="opacity:.6;margin-top:14px">v2.1</div>
+    <div class="hint" style="opacity:.6;margin-top:14px">v2.2</div>
   </div>
 </div>
 <header>
@@ -242,7 +252,10 @@
 
     <h2>Katalog verwalten</h2>
     <button class="btn" id="btnCatNew" style="margin-top:0">+ Neuer Artikel</button>
-    <div class="card" id="catalogList" style="margin-top:10px"></div>
+    <details class="card fold" id="catalogWrap" style="margin-top:10px">
+      <summary class="foldhead"><span class="foldtitle">Alle Artikel</span><span class="foldcount" id="catCount"></span><span class="foldchev">›</span></summary>
+      <div id="catalogList"></div>
+    </details>
     <button class="btn secondary" id="btnResetCatalog">Fehlende Standard-Artikel hinzufügen</button>
 
     <h2>Automatischer Mailversand (optional)</h2>
@@ -267,7 +280,7 @@
     <button class="btn secondary" id="btnExport">Sicherung exportieren</button>
     <button class="btn secondary" id="btnImport">Sicherung importieren</button>
     <input type="file" id="importFile" accept="application/json" hidden>
-    <p class="hint" style="text-align:center;margin-top:18px">Material Transit · v2.1</p>
+    <p class="hint" style="text-align:center;margin-top:18px">Material Transit · v2.2</p>
   </section>
 </main>
 
@@ -290,6 +303,6 @@
 <div class="sheet" id="sheet"></div>
 <div class="toast" id="toast"><span id="toastText"></span><button id="toastBtn"></button></div>
 
-<script src="app.js?v=10"></script>
+<script src="app.js?v=11"></script>
 </body>
 </html>
