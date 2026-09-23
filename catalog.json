@@ -1,5 +1,5 @@
 {
-  "updated": 1790170757439,
+  "updated": 1790171640971,
   "items": [
     {
       "id": "std-verlaengerung-t13",
@@ -106,13 +106,7 @@
     {
       "id": "std-rj45-cat6",
       "cat": "Netzwerk",
-      "name": "RJ45 Cat6",
-      "len": true
-    },
-    {
-      "id": "std-rj45-cat6a",
-      "cat": "Netzwerk",
-      "name": "RJ45 Cat6a",
+      "name": "LAN",
       "len": true
     },
     {
