@@ -115,7 +115,7 @@
   .toast span { flex: 1; }
   .toast button { border: 0; background: transparent; color: #8fb8ff; font-weight: 700; font-size: 15px; }
   #lock { position: fixed; inset: 0; z-index: 100; background: var(--bg); display: flex; flex-direction: column;
-    align-items: center; justify-content: center; padding: 24px; text-align: center; }
+    align-items: center; justify-content: safe center; padding: 24px; text-align: center; overflow-y: auto; }
   #lock.hidden { display: none; }
   #lock img { width: 84px; height: 84px; border-radius: 20px; margin-bottom: 16px; }
   #lock h2 { text-transform: none; letter-spacing: 0; font-size: 22px; color: var(--text); margin: 0 0 4px; }
@@ -129,6 +129,14 @@
   .keypad button:active { background: var(--accent-soft); }
   .keypad button.plain { background: transparent; box-shadow: none; font-size: 24px; color: var(--muted); }
   #lock .switch { justify-content: center; margin-top: 22px; }
+  @media (max-height: 700px) {
+    #lock { padding: 12px 24px; }
+    #lock img { width: 56px; height: 56px; border-radius: 14px; margin-bottom: 8px; }
+    .dots { margin: 12px 0 4px; }
+    .keypad { grid-template-columns: repeat(3, 64px); gap: 10px 22px; }
+    .keypad button { width: 64px; height: 64px; font-size: 26px; }
+    #lock .switch { margin-top: 12px; }
+  }
   @keyframes shake { 20%,60% { transform: translateX(-8px); } 40%,80% { transform: translateX(8px); } }
   .shake { animation: shake .35s; }
   details summary { cursor: pointer; list-style: none; }
@@ -150,6 +158,7 @@
       <span></span><button data-k="0">0</button><button class="plain" data-k="del" aria-label="Löschen">⌫</button>
     </div>
     <label class="switch"><input type="checkbox" id="lockRemember"> Auf diesem Gerät merken</label>
+    <div class="hint" style="opacity:.6;margin-top:14px">v1.2</div>
   </div>
 </div>
 <header>
@@ -208,7 +217,7 @@
     <button class="btn secondary" id="btnExport">Sicherung exportieren</button>
     <button class="btn secondary" id="btnImport">Sicherung importieren</button>
     <input type="file" id="importFile" accept="application/json" hidden>
-    <p class="hint" style="text-align:center;margin-top:18px">Material Transit · v1.1</p>
+    <p class="hint" style="text-align:center;margin-top:18px">Material Transit · v1.2</p>
   </section>
 </main>
 
@@ -228,6 +237,6 @@
 <div class="sheet" id="sheet"></div>
 <div class="toast" id="toast"><span id="toastText"></span><button id="toastBtn"></button></div>
 
-<script src="app.js"></script>
+<script src="app.js?v=4"></script>
 </body>
 </html>

@@ -469,7 +469,15 @@ async function pressKey(k) {
   renderDots();
   if (pinInput.length < PIN_LEN) return;
 
-  if (await hashPin(pinInput) === PIN_HASH) {
+  let ok;
+  try {
+    ok = await hashPin(pinInput) === PIN_HASH;
+  } catch (err) {
+    $('#lockErr').textContent = 'Prüfung nicht möglich – bitte in Chrome öffnen';
+    pinInput = ''; renderDots();
+    return;
+  }
+  if (ok) {
     try {
       sessionStorage.setItem(UNLOCK_KEY, PIN_HASH);
       if ($('#lockRemember').checked) localStorage.setItem(UNLOCK_KEY, PIN_HASH);
