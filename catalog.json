@@ -1,0 +1,203 @@
+{
+  "updated": 1790170757439,
+  "items": [
+    {
+      "id": "std-verlaengerung-t13",
+      "cat": "Strom",
+      "name": "Verlängerung T13",
+      "len": true
+    },
+    {
+      "id": "std-verlaengerung-t23",
+      "cat": "Strom",
+      "name": "Verlängerung T23",
+      "len": true
+    },
+    {
+      "id": "std-kaltgeraetekabel-c13",
+      "cat": "Strom",
+      "name": "Kaltgerätekabel C13",
+      "len": true
+    },
+    {
+      "id": "std-steckerleiste-t13",
+      "cat": "Strom",
+      "name": "Steckerleiste T13",
+      "len": false
+    },
+    {
+      "id": "std-kabelrolle",
+      "cat": "Strom",
+      "name": "Kabelrolle",
+      "len": false
+    },
+    {
+      "id": "std-cee16-kabel",
+      "cat": "Strom",
+      "name": "CEE16 Kabel",
+      "len": true
+    },
+    {
+      "id": "std-cee32-kabel",
+      "cat": "Strom",
+      "name": "CEE32 Kabel",
+      "len": true
+    },
+    {
+      "id": "std-powercon-kabel",
+      "cat": "Strom",
+      "name": "powerCON Kabel",
+      "len": true
+    },
+    {
+      "id": "std-hdmi",
+      "cat": "Video",
+      "name": "HDMI",
+      "len": true
+    },
+    {
+      "id": "std-displayport",
+      "cat": "Video",
+      "name": "DisplayPort",
+      "len": true
+    },
+    {
+      "id": "std-sdi-bnc",
+      "cat": "Video",
+      "name": "SDI / BNC",
+      "len": true
+    },
+    {
+      "id": "std-vga",
+      "cat": "Video",
+      "name": "VGA",
+      "len": true
+    },
+    {
+      "id": "std-xlr",
+      "cat": "Audio",
+      "name": "XLR",
+      "len": true
+    },
+    {
+      "id": "std-klinke-6-3-mm",
+      "cat": "Audio",
+      "name": "Klinke 6.3 mm",
+      "len": true
+    },
+    {
+      "id": "std-klinke-3-5-mm",
+      "cat": "Audio",
+      "name": "Klinke 3.5 mm",
+      "len": true
+    },
+    {
+      "id": "std-cinch",
+      "cat": "Audio",
+      "name": "Cinch",
+      "len": true
+    },
+    {
+      "id": "std-speakon",
+      "cat": "Audio",
+      "name": "Speakon",
+      "len": true
+    },
+    {
+      "id": "std-rj45-cat6",
+      "cat": "Netzwerk",
+      "name": "RJ45 Cat6",
+      "len": true
+    },
+    {
+      "id": "std-rj45-cat6a",
+      "cat": "Netzwerk",
+      "name": "RJ45 Cat6a",
+      "len": true
+    },
+    {
+      "id": "std-hdmi-displayport",
+      "cat": "Adapter",
+      "name": "HDMI → DisplayPort",
+      "len": false
+    },
+    {
+      "id": "std-displayport-hdmi",
+      "cat": "Adapter",
+      "name": "DisplayPort → HDMI",
+      "len": false
+    },
+    {
+      "id": "std-mini-dp-hdmi",
+      "cat": "Adapter",
+      "name": "Mini-DP → HDMI",
+      "len": false
+    },
+    {
+      "id": "std-usb-c-hdmi",
+      "cat": "Adapter",
+      "name": "USB-C → HDMI",
+      "len": false
+    },
+    {
+      "id": "std-hdmi-vga",
+      "cat": "Adapter",
+      "name": "HDMI → VGA",
+      "len": false
+    },
+    {
+      "id": "std-hdmi-kupplung",
+      "cat": "Adapter",
+      "name": "HDMI Kupplung",
+      "len": false
+    },
+    {
+      "id": "std-xlr-klinke",
+      "cat": "Adapter",
+      "name": "XLR → Klinke",
+      "len": false
+    },
+    {
+      "id": "std-klinke-3-5-6-3-mm",
+      "cat": "Adapter",
+      "name": "Klinke 3.5 → 6.3 mm",
+      "len": false
+    },
+    {
+      "id": "std-cee16-t13",
+      "cat": "Adapter",
+      "name": "CEE16 → T13",
+      "len": false
+    },
+    {
+      "id": "std-gaffa-tape",
+      "cat": "Diverses",
+      "name": "Gaffa Tape",
+      "len": false
+    },
+    {
+      "id": "std-kabelbinder",
+      "cat": "Diverses",
+      "name": "Kabelbinder",
+      "len": false
+    },
+    {
+      "id": "std-klettband",
+      "cat": "Diverses",
+      "name": "Klettband",
+      "len": false
+    },
+    {
+      "id": "std-batterien-aa",
+      "cat": "Diverses",
+      "name": "Batterien AA",
+      "len": false
+    },
+    {
+      "id": "std-batterien-aaa",
+      "cat": "Diverses",
+      "name": "Batterien AAA",
+      "len": false
+    }
+  ]
+}
