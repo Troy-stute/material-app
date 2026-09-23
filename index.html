@@ -71,6 +71,11 @@
   .rowbtn:active { background: var(--accent-soft); }
   .chev { color: var(--muted); font-size: 22px; line-height: 1; }
   .hint a { color: var(--accent); }
+  .syncbox { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 550; }
+  .syncdot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); flex: none; }
+  .syncdot.ok { background: var(--ok); } .syncdot.warn { background: #e0a100; } .syncdot.err { background: var(--danger); }
+  .syncdot.busy { background: var(--accent); animation: pulse 1s infinite; }
+  @keyframes pulse { 50% { opacity: .3; } }
 
   .btn { display: block; width: 100%; border: 0; border-radius: 12px; padding: 14px; font-size: 16px; font-weight: 600;
     background: var(--accent); color: var(--accent-text); margin-top: 10px; }
@@ -163,7 +168,7 @@
       <span></span><button data-k="0">0</button><button class="plain" data-k="del" aria-label="Löschen">⌫</button>
     </div>
     <label class="switch"><input type="checkbox" id="lockRemember"> Auf diesem Gerät merken</label>
-    <div class="hint" style="opacity:.6;margin-top:14px">v1.5</div>
+    <div class="hint" style="opacity:.6;margin-top:14px">v1.6</div>
   </div>
 </div>
 <header>
@@ -197,19 +202,15 @@
       <input type="email" id="setEmail">
     </div>
 
-    <h2>Katalog verwalten</h2>
-    <div class="hint" id="syncStatus" style="margin:0 0 8px"></div>
-    <button class="btn" id="btnCatNew" style="margin-top:0">+ Neuer Artikel</button>
-    <div class="card" id="catalogList" style="margin-top:10px"></div>
-    <button class="btn secondary" id="btnSyncNow">Jetzt synchronisieren</button>
-    <button class="btn secondary" id="btnResetCatalog">Fehlende Standard-Artikel hinzufügen</button>
-
     <h2>Geräte-Synchronisation</h2>
-    <div class="card" style="padding:4px 14px 14px">
-      <p class="hint">Der Katalog wird auf GitHub gespeichert und auf allen Geräten automatisch geladen.
+    <div class="card" style="padding:12px 14px 14px">
+      <div class="syncbox"><span class="syncdot" id="syncDot"></span><span id="syncStatus"></span></div>
+      <button class="btn secondary" id="btnSyncNow">Jetzt synchronisieren</button>
+      <p class="hint" style="margin-top:14px">Der Katalog wird auf GitHub gespeichert und auf allen Geräten automatisch geladen.
         Zum <b>Bearbeiten</b> braucht das Gerät einen GitHub-Token. Ohne Token wird der Katalog nur gelesen.</p>
       <label class="f" for="ghToken">GitHub-Token</label>
       <input type="password" id="ghToken" placeholder="github_pat_…" autocomplete="off" spellcheck="false">
+      <button class="btn" id="btnTokenSave">Token speichern &amp; prüfen</button>
       <details style="margin-top:10px">
         <summary class="hint" style="color:var(--accent);font-weight:600">So erstellst du einen Token ▾</summary>
         <ol class="hint" style="padding-left:18px;margin:8px 0 0">
@@ -221,6 +222,11 @@
         </ol>
       </details>
     </div>
+
+    <h2>Katalog verwalten</h2>
+    <button class="btn" id="btnCatNew" style="margin-top:0">+ Neuer Artikel</button>
+    <div class="card" id="catalogList" style="margin-top:10px"></div>
+    <button class="btn secondary" id="btnResetCatalog">Fehlende Standard-Artikel hinzufügen</button>
 
     <h2>Automatischer Mailversand (optional)</h2>
     <div class="card" style="padding:4px 14px 14px">
@@ -243,7 +249,7 @@
     <button class="btn secondary" id="btnExport">Sicherung exportieren</button>
     <button class="btn secondary" id="btnImport">Sicherung importieren</button>
     <input type="file" id="importFile" accept="application/json" hidden>
-    <p class="hint" style="text-align:center;margin-top:18px">Material Transit · v1.5</p>
+    <p class="hint" style="text-align:center;margin-top:18px">Material Transit · v1.6</p>
   </section>
 </main>
 
@@ -263,6 +269,6 @@
 <div class="sheet" id="sheet"></div>
 <div class="toast" id="toast"><span id="toastText"></span><button id="toastBtn"></button></div>
 
-<script src="app.js?v=7"></script>
+<script src="app.js?v=8"></script>
 </body>
 </html>

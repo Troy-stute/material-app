@@ -391,7 +391,6 @@ function renderSettings() {
     state.settings[key] = e.target.value.trim();
     if (key === 'vehicle' && !state.settings.vehicle) state.settings.vehicle = 'Ford Transit';
     save(); renderHeader();
-    if (key === 'ghToken') syncCatalog(true);
   }));
 
 function renderCatalogList() {
@@ -451,7 +450,12 @@ function openCatalogSheet(item) {
 }
 
 $('#btnCatNew').addEventListener('click', () => openCatalogSheet(null));
-$('#btnSyncNow').addEventListener('click', () => syncCatalog(true));
+$('#btnSyncNow').addEventListener('click', () => syncCatalog(true, true));
+$('#btnTokenSave').addEventListener('click', () => {
+  state.settings.ghToken = $('#ghToken').value.trim();
+  save();
+  syncCatalog(true, true);
+});
 
 $('#btnResetCatalog').addEventListener('click', () => {
   if (!confirm('Fehlende Standard-Artikel wieder hinzufügen? Eigene Artikel bleiben erhalten.')) return;
@@ -529,10 +533,19 @@ async function pushCatalog(items, sha) {
   return true;
 }
 
-async function syncCatalog(force) {
-  if (syncBusy || !navigator.onLine) { renderSyncStatus(); return; }
+async function syncCatalog(force, manual) {
+  if (!navigator.onLine) { renderSyncStatus(); if (manual) toast('Kein Internet – später nochmals versuchen'); return; }
+  if (syncBusy) { if (manual) toast('Synchronisation läuft bereits …'); return; }
   if (!force && Date.now() - lastPull < 30000) return;
   syncBusy = true; renderSyncStatus();
+  const btns = ['#btnSyncNow', '#btnTokenSave'].map((s) => $(s));
+  if (manual) btns.forEach((b) => { b.disabled = true; b.dataset.label = b.dataset.label || b.textContent; b.textContent = 'Synchronisiere …'; });
+  // nie länger als 20 s hängen bleiben
+  const timeout = setTimeout(() => {
+    if (!syncBusy) return;
+    syncBusy = false; syncError = 'Zeitüberschreitung – bitte nochmals versuchen'; renderSyncStatus();
+    if (manual) { btns.forEach((b) => { b.disabled = false; b.textContent = b.dataset.label; }); toast('⚠ ' + syncError); }
+  }, 20000);
   try {
     for (let attempt = 0; attempt < 3; attempt++) {
       const remote = await fetchRemoteCatalog();
@@ -564,10 +577,17 @@ async function syncCatalog(force) {
   } catch (e) {
     syncError = e.message || 'Unbekannter Fehler';
   }
+  clearTimeout(timeout);
   syncBusy = false;
   rebuildCatalog();
   save();
   renderItems(); renderCatalogList(); renderSyncStatus();
+  if (manual) {
+    btns.forEach((b) => { b.disabled = false; b.textContent = b.dataset.label; });
+    if (syncError) toast('⚠ ' + syncError);
+    else if (state.sync.pending.length && !state.settings.ghToken) toast('Katalog geladen – eigene Änderungen nur auf diesem Gerät (kein Token)');
+    else toast(state.settings.ghToken ? '✓ Katalog synchronisiert' : '✓ Katalog geladen (nur lesen)');
+  }
 }
 
 function renderSyncStatus() {
@@ -586,6 +606,8 @@ function renderSyncStatus() {
   else text = 'Noch nicht synchronisiert';
   el.textContent = text;
   el.style.color = syncError ? 'var(--danger)' : '';
+  const dot = $('#syncDot');
+  if (dot) dot.className = 'syncdot ' + (syncBusy ? 'busy' : syncError ? 'err' : n || !navigator.onLine ? 'warn' : s.syncedAt ? 'ok' : '');
 }
 
 window.addEventListener('online', () => syncCatalog(true));
