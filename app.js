@@ -65,17 +65,21 @@ function load() {
       s.settings = Object.assign(defaultSettings(), s.settings);
       s.catalog = s.catalog || defaultCatalog();
       s.orders = s.orders || [];
-      s.sync = Object.assign(defaultSync(), s.sync);
+      s.inventory = s.inventory || [];
+      // v1.6 hatte nur den Katalog synchronisiert: { remote, pending, syncedAt }
+      if (s.sync && 'pending' in s.sync) s.sync = { catalog: s.sync };
+      s.sync = Object.assign({ catalog: defaultDocSync(), inventory: defaultDocSync() }, s.sync);
       return s;
     }
   } catch (e) { /* ungültige Daten: neu starten */ }
-  return { settings: defaultSettings(), catalog: defaultCatalog(), orders: [], sync: defaultSync() };
+  return { settings: defaultSettings(), catalog: defaultCatalog(), orders: [], inventory: [],
+    sync: { catalog: defaultDocSync(), inventory: defaultDocSync() } };
 }
 function defaultSettings() {
   return { vehicle: 'Ford Transit', email: 'joel.stutz@avs.ch', ejService: '', ejTemplate: '', ejKey: '', ghToken: '' };
 }
-function defaultSync() {
-  // remote: letzter bekannter Katalog vom Server, pending: noch nicht hochgeladene Änderungen
+function defaultDocSync() {
+  // remote: letzter bekannter Stand vom Server, pending: noch nicht hochgeladene Änderungen
   return { remote: null, pending: [], syncedAt: null };
 }
 function save() {
@@ -90,6 +94,7 @@ function show(view) {
   document.querySelectorAll('.view').forEach((v) => v.classList.toggle('active', v.id === 'v-' + view));
   document.querySelectorAll('nav button').forEach((b) => b.classList.toggle('on', b.dataset.view === view));
   if (view === 'auftrag') renderOrders();
+  if (view === 'inventar') renderInventory();
   if (view === 'settings') renderSettings();
   window.scrollTo(0, 0);
 }
@@ -235,6 +240,8 @@ const doneOrders = () => state.orders.filter((o) => o.done).sort((a, b) => b.don
 function renderBadge() {
   const n = openOrders().length;
   $('#badge').textContent = n ? n : '';
+  const low = state.inventory.filter((e) => e.qty < e.target).length;
+  $('#badgeInv').textContent = low ? low : '';
 }
 
 function orderTitle(o) {
@@ -270,12 +277,11 @@ function renderOrders() {
     $('#btnMail').addEventListener('click', sendMail);
     $('#btnAllDone').addEventListener('click', () => {
       if (!confirm(`Alle ${open.length} Positionen als erledigt markieren?`)) return;
-      const ids = open.map((o) => o.id);
       const now = Date.now();
-      open.forEach((o) => { o.done = now; });
+      const restocked = open.filter((o) => completeOrder(o, now)).length;
       save(); renderOrders();
-      toast('Alles erledigt', 'Rückgängig', () => {
-        state.orders.forEach((o) => { if (ids.includes(o.id)) o.done = null; });
+      toast(restocked ? `Alles erledigt · ${restocked} im Inventar eingebucht` : 'Alles erledigt', 'Rückgängig', () => {
+        open.forEach(reopenOrder);
         save(); renderOrders();
       });
     });
@@ -283,8 +289,10 @@ function renderOrders() {
 
   $('#openList').querySelectorAll('[data-done]').forEach((b) => b.addEventListener('click', () => {
     const o = state.orders.find((x) => x.id === b.dataset.done);
-    o.done = Date.now(); save(); renderOrders();
-    toast(`${orderTitle(o)} erledigt`, 'Rückgängig', () => { o.done = null; save(); renderOrders(); });
+    const restocked = completeOrder(o, Date.now());
+    save(); renderOrders();
+    const e = restocked && state.inventory.find((x) => x.id === o.restocked.id);
+    toast(`${orderTitle(o)} erledigt${e ? ` · Bestand ${e.qty}/${e.target}` : ''}`, 'Rückgängig', () => { reopenOrder(o); save(); renderOrders(); });
   }));
   $('#openList').querySelectorAll('[data-plus]').forEach((b) => b.addEventListener('click', () => {
     state.orders.find((x) => x.id === b.dataset.plus).qty++; save(); renderOrders();
@@ -317,12 +325,226 @@ function renderDone() {
       <button class="btn danger" id="btnClearDone">Erledigte löschen</button>
     </details>`;
   $('#doneWrap').querySelectorAll('[data-undo]').forEach((b) => b.addEventListener('click', () => {
-    state.orders.find((x) => x.id === b.dataset.undo).done = null; save(); renderOrders();
+    reopenOrder(state.orders.find((x) => x.id === b.dataset.undo)); save(); renderOrders();
   }));
   $('#btnClearDone').addEventListener('click', () => {
     if (!confirm('Alle erledigten Positionen endgültig löschen?')) return;
     state.orders = state.orders.filter((o) => !o.done); save(); renderOrders();
   });
+}
+
+// ---------- Inventar ----------
+// Ein Eintrag pro Katalogartikel und Länge: { id, itemId, name, cat, len, qty, target }.
+// Name/Kategorie werden als Rückfall mitgespeichert, angezeigt wird der aktuelle Katalogname.
+const invKey = (itemId, len) => `${itemId}@${len == null ? '-' : len}`;
+const invItem = (e) => state.catalog.find((i) => i.id === e.itemId) || e;
+const invTitle = (e) => `${invItem(e).name}${e.len != null ? ' · ' + fmtLen(e.len) : ''}`;
+let invFilter = 'alle';
+
+function invOp(op) { docOp('inventory', op); }
+
+// Fehlende Menge (Soll − Bestand) auf den Nachfüll-Auftrag setzen. Gibt zurück, was geändert wurde (für Rückgängig).
+function reconcileOrder(e) {
+  const need = e.target - e.qty;
+  if (need <= 0) return null;
+  const name = invItem(e).name;
+  const o = state.orders.find((x) => !x.done && x.name === name && x.len === e.len && !x.note);
+  if (o) {
+    if (o.qty >= need) return null;
+    const change = { orderId: o.id, prevQty: o.qty, added: need - o.qty };
+    o.qty = need;
+    return change;
+  }
+  const created = { id: uid(), name, cat: invItem(e).cat, len: e.len, qty: need, note: '', created: Date.now(), done: null };
+  state.orders.push(created);
+  return { orderId: created.id, prevQty: null, added: need };
+}
+function undoOrderChange(c) {
+  if (!c) return;
+  if (c.prevQty == null) state.orders = state.orders.filter((o) => o.id !== c.orderId);
+  else { const o = state.orders.find((x) => x.id === c.orderId); if (o) o.qty = c.prevQty; }
+}
+
+// Auftrag erledigt: passende Inventar-Position um die Menge erhöhen
+function completeOrder(o, when) {
+  o.done = when;
+  const e = state.inventory.find((x) => invItem(x).name === o.name && x.len === o.len);
+  if (!e) return false;
+  o.restocked = { id: e.id, d: o.qty };
+  invOp({ type: 'delta', id: e.id, d: o.qty });
+  return true;
+}
+function reopenOrder(o) {
+  o.done = null;
+  if (o.restocked) { invOp({ type: 'delta', id: o.restocked.id, d: -o.restocked.d }); delete o.restocked; }
+}
+
+function renderInventory() {
+  const all = state.inventory;
+  const low = all.filter((e) => e.qty < e.target);
+  $('#invSummary').innerHTML = all.length
+    ? `<b>${all.length}</b> Positionen · <b class="${low.length ? 'lowtxt' : ''}">${low.length}</b> unter Soll`
+    : '';
+  $('#invFilter').innerHTML = [['alle', 'Alle'], ['unter', `Unter Soll (${low.length})`]]
+    .map(([k, l]) => `<button class="chip ${invFilter === k ? 'on' : ''}" data-f="${k}">${l}</button>`).join('');
+  $('#invFilter').querySelectorAll('.chip').forEach((b) => b.addEventListener('click', () => { invFilter = b.dataset.f; renderInventory(); }));
+
+  const list = invFilter === 'unter' ? low : all;
+  if (!all.length) {
+    $('#invList').innerHTML = `<div class="empty"><b>Noch kein Inventar</b>Füge Artikel hinzu und gib an, wie viele im Fahrzeug sind und wie viele es sein sollen.</div>`;
+    return;
+  }
+  if (!list.length) {
+    $('#invList').innerHTML = `<div class="empty"><b>Alles auf Soll</b>Kein Artikel ist unter dem Soll-Bestand.</div>`;
+    return;
+  }
+  let html = '';
+  CATEGORIES.forEach((cat) => {
+    const rows = list.filter((e) => invItem(e).cat === cat)
+      .sort((a, b) => invItem(a).name.localeCompare(invItem(b).name) || (a.len ?? 0) - (b.len ?? 0));
+    if (!rows.length) return;
+    html += `<h2>${esc(cat)}</h2><div class="card">` + rows.map((e) => `
+      <div class="row">
+        <button class="main rowlink" data-inv-edit="${esc(e.id)}">
+          <div class="title">${esc(invTitle(e))}</div>
+          <div class="meta">Soll ${e.target}${e.qty < e.target ? ` · <span class="lowtxt">${e.target - e.qty} fehlen</span>` : ''}</div>
+        </button>
+        <div class="stock ${e.qty < e.target ? 'low' : ''}">${e.qty}<small>/${e.target}</small></div>
+        <div class="qty">
+          <button data-inv-minus="${esc(e.id)}" aria-label="Entnehmen">−</button><button data-inv-plus="${esc(e.id)}" aria-label="Einlagern">+</button>
+        </div>
+      </div>`).join('') + `</div>`;
+  });
+  $('#invList').innerHTML = html;
+
+  $('#invList').querySelectorAll('[data-inv-edit]').forEach((b) => b.addEventListener('click', () =>
+    openInvSheet(state.inventory.find((e) => e.id === b.dataset.invEdit))));
+  $('#invList').querySelectorAll('[data-inv-minus]').forEach((b) => b.addEventListener('click', () => takeOut(b.dataset.invMinus)));
+  $('#invList').querySelectorAll('[data-inv-plus]').forEach((b) => b.addEventListener('click', () => {
+    const id = b.dataset.invPlus;
+    invOp({ type: 'delta', id, d: 1 });
+    const e = state.inventory.find((x) => x.id === id);
+    toast(`${invTitle(e)} eingelagert · Bestand ${e.qty}/${e.target}`, 'Rückgängig', () => invOp({ type: 'delta', id, d: -1 }));
+  }));
+}
+
+function takeOut(id) {
+  const before = state.inventory.find((x) => x.id === id);
+  if (!before || before.qty <= 0) { toast('Bestand ist schon 0'); return; }
+  invOp({ type: 'delta', id, d: -1 });
+  const e = state.inventory.find((x) => x.id === id);
+  const change = reconcileOrder(e);
+  save(); renderInventory();
+  toast(`${invTitle(e)} entnommen · ${e.qty}/${e.target}${change ? ` · ${change.added} auf Auftrag` : ''}`, 'Rückgängig', () => {
+    undoOrderChange(change);
+    invOp({ type: 'delta', id, d: 1 });
+  });
+}
+
+// Bottom-Sheet: Artikel ins Inventar aufnehmen (entry = null) oder Bestand/Soll bearbeiten
+function openInvSheet(entry) {
+  const isNew = !entry;
+  let qty = isNew ? 0 : entry.qty;
+  let target = isNew ? 1 : entry.target;
+  let cat = isNew ? CATEGORIES[0] : invItem(entry).cat;
+  let itemId = isNew ? null : entry.itemId;
+  let len = isNew ? null : entry.len;
+
+  const itemsOf = (c) => state.catalog.filter((i) => i.cat === c);
+  const current = () => state.catalog.find((i) => i.id === itemId);
+
+  const pickerHtml = () => {
+    const items = itemsOf(cat);
+    if (!items.some((i) => i.id === itemId)) itemId = items[0] ? items[0].id : null;
+    const it = current();
+    return `
+      <label class="f" for="iCat">Kategorie</label>
+      <select id="iCat">${CATEGORIES.map((c) => `<option ${c === cat ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select>
+      <label class="f" for="iItem">Artikel</label>
+      <select id="iItem">${items.map((i) => `<option value="${esc(i.id)}" ${i.id === itemId ? 'selected' : ''}>${esc(i.name)}</option>`).join('')}</select>
+      ${it && it.len ? `
+        <label class="f">Länge</label>
+        <div class="lens" id="iLens">${LENGTHS.map((l) => `<button class="chip ${len === l ? 'on' : ''}" data-l="${l}">${fmtLen(l)}</button>`).join('')}</div>
+        <input type="number" id="iLenCustom" inputmode="decimal" min="0" step="0.5" placeholder="Andere Länge in m" style="margin-top:8px"
+          value="${len != null && !LENGTHS.includes(len) ? len : ''}">` : ''}`;
+  };
+
+  $('#sheet').innerHTML = `
+    <div class="grab"></div>
+    <h3>${isNew ? 'Ins Inventar aufnehmen' : esc(invTitle(entry))}</h3>
+    ${isNew ? '' : `<div class="hint">${esc(invItem(entry).cat)}</div>`}
+    <div id="iPicker">${isNew ? pickerHtml() : ''}</div>
+    <label class="f">Bestand im Fahrzeug</label>
+    <div class="bigqty"><button id="iqMinus">−</button><span id="iqVal">${qty}</span><button id="iqPlus">+</button></div>
+    <label class="f">Soll-Bestand</label>
+    <div class="bigqty"><button id="itMinus">−</button><span id="itVal">${target}</span><button id="itPlus">+</button></div>
+    <p class="hint" style="text-align:center">Fällt der Bestand unter das Soll, kommt die fehlende Menge auf den Nachfüll-Auftrag.</p>
+    <button class="btn" id="iSave">${isNew ? 'Aufnehmen' : 'Speichern'}</button>
+    ${isNew ? '' : '<button class="btn danger" id="iDel">Aus Inventar entfernen</button>'}
+    <button class="btn secondary" id="iCancel">Abbrechen</button>`;
+
+  const bindPicker = () => {
+    if (!isNew) return;
+    $('#iCat').addEventListener('change', (ev) => { cat = ev.target.value; len = null; $('#iPicker').innerHTML = pickerHtml(); bindPicker(); });
+    $('#iItem').addEventListener('change', (ev) => { itemId = ev.target.value; len = null; $('#iPicker').innerHTML = pickerHtml(); bindPicker(); });
+    if ($('#iLens')) {
+      $('#iLens').querySelectorAll('.chip').forEach((b) => b.addEventListener('click', () => {
+        len = parseFloat(b.dataset.l); $('#iPicker').innerHTML = pickerHtml(); bindPicker();
+      }));
+      $('#iLenCustom').addEventListener('input', (ev) => {
+        const v = parseFloat(ev.target.value); len = isNaN(v) ? null : v;
+        $('#iLens').querySelectorAll('.chip').forEach((c) => c.classList.toggle('on', parseFloat(c.dataset.l) === len));
+      });
+    }
+  };
+  bindPicker();
+
+  $('#iqMinus').addEventListener('click', () => { qty = Math.max(0, qty - 1); $('#iqVal').textContent = qty; });
+  $('#iqPlus').addEventListener('click', () => { qty += 1; $('#iqVal').textContent = qty; });
+  $('#itMinus').addEventListener('click', () => { target = Math.max(0, target - 1); $('#itVal').textContent = target; });
+  $('#itPlus').addEventListener('click', () => { target += 1; $('#itVal').textContent = target; });
+  $('#iCancel').addEventListener('click', closeSheet);
+
+  $('#iSave').addEventListener('click', () => {
+    let e;
+    if (isNew) {
+      const it = current();
+      if (!it) { toast('Bitte einen Artikel wählen'); return; }
+      if (it.len && len == null) { toast('Bitte eine Länge wählen'); return; }
+      const useLen = it.len ? len : null;
+      const id = invKey(it.id, useLen);
+      if (state.inventory.some((x) => x.id === id)) { toast('Ist schon im Inventar – dort bearbeiten'); return; }
+      invOp({ type: 'add', entry: { id, itemId: it.id, name: it.name, cat: it.cat, len: useLen, qty, target } });
+      e = state.inventory.find((x) => x.id === id);
+    } else {
+      // Bestand als Differenz senden, damit gleichzeitige Entnahmen auf anderen Geräten nicht verloren gehen
+      if (qty !== entry.qty) invOp({ type: 'delta', id: entry.id, d: qty - entry.qty });
+      if (target !== entry.target) invOp({ type: 'update', id: entry.id, fields: { target } });
+      e = state.inventory.find((x) => x.id === entry.id);
+    }
+    const change = e && reconcileOrder(e);
+    save(); closeSheet(); renderInventory();
+    toast(`${invTitle(e)} gespeichert${change ? ` · ${change.added} auf Auftrag` : ''}`);
+  });
+
+  if (!isNew) {
+    $('#iDel').addEventListener('click', () => {
+      if (!confirm(`„${invTitle(entry)}“ aus dem Inventar entfernen?`)) return;
+      invOp({ type: 'delete', id: entry.id });
+      closeSheet();
+      toast(`${invTitle(entry)} entfernt`, 'Rückgängig', () => invOp({ type: 'add', entry }));
+    });
+  }
+  openSheet();
+}
+$('#btnInvAdd').addEventListener('click', () => openInvSheet(null));
+
+function applyInvOp(items, op) {
+  if (op.type === 'add') return items.some((i) => i.id === op.entry.id) ? items : [...items, { ...op.entry }];
+  if (op.type === 'delta') return items.map((i) => (i.id === op.id ? { ...i, qty: Math.max(0, i.qty + op.d) } : i));
+  if (op.type === 'update') return items.map((i) => (i.id === op.id ? { ...i, ...op.fields } : i));
+  if (op.type === 'delete') return items.filter((i) => i.id !== op.id);
+  return items;
 }
 
 // ---------- Mail ----------
@@ -466,10 +688,12 @@ $('#btnResetCatalog').addEventListener('click', () => {
   toast(n ? `${n} Standard-Artikel hinzugefügt` : 'Alle Standard-Artikel sind vorhanden');
 });
 
-// ---------- Katalog-Synchronisation über GitHub ----------
-// Der Katalog liegt als catalog.json im Zweig "data" (kein Neubau der Webseite bei Änderungen).
+// ---------- Synchronisation über GitHub (Katalog und Inventar) ----------
+// Beide Listen liegen als JSON im Zweig "data" (kein Neubau der Webseite bei Änderungen).
 // Lesen geht ohne Anmeldung; Schreiben braucht einen GitHub-Token mit Schreibrecht auf "Contents".
-const GH_API = 'https://api.github.com/repos/Troy-stute/material-app/contents/catalog.json';
+// Geändert wird über Operationen (add/update/delete/delta), die auf den neusten Serverstand
+// angewendet werden. So gehen gleichzeitige Änderungen von Handy und PC nicht verloren.
+const GH_BASE = 'https://api.github.com/repos/Troy-stute/material-app/contents/';
 const GH_BRANCH = 'data';
 
 function applyOp(items, op) {
@@ -482,18 +706,32 @@ function applyOp(items, op) {
   return items;
 }
 
-function rebuildCatalog() {
-  const base = state.sync.remote ? state.sync.remote.items : state.catalog;
-  state.catalog = state.sync.pending.reduce(applyOp, base.map((i) => ({ ...i })));
+const DOCS = {
+  catalog: { path: 'catalog.json', label: 'Katalog', apply: applyOp, get: () => state.catalog, set: (v) => { state.catalog = v; } },
+  inventory: { path: 'inventory.json', label: 'Inventar', apply: applyInvOp, get: () => state.inventory, set: (v) => { state.inventory = v; } },
+};
+
+function rebuildDoc(doc) {
+  const d = DOCS[doc], s = state.sync[doc];
+  const base = s.remote ? s.remote.items : d.get();
+  d.set(s.pending.reduce(d.apply, base.map((i) => ({ ...i }))));
 }
 
-function catalogOp(op) {
-  state.catalog = applyOp(state.catalog, op);
-  state.sync.pending.push(op);
-  save();
+function renderAllLists() {
   renderItems(); renderCatalogList(); renderSyncStatus();
+  if ($('#v-inventar').classList.contains('active')) renderInventory();
+  if ($('#v-auftrag').classList.contains('active')) renderOrders();
+}
+
+function docOp(doc, op) {
+  const d = DOCS[doc];
+  d.set(d.apply(d.get(), op));
+  state.sync[doc].pending.push(op);
+  save();
+  renderAllLists();
   scheduleSync();
 }
+const catalogOp = (op) => docOp('catalog', op);
 
 let syncTimer, syncBusy = false, lastPull = 0, syncError = '';
 function scheduleSync() {
@@ -510,27 +748,59 @@ function ghHeaders() {
   return h;
 }
 
-async function fetchRemoteCatalog() {
-  const res = await fetch(`${GH_API}?ref=${GH_BRANCH}&t=${Date.now()}`, { headers: ghHeaders(), cache: 'no-store' });
+async function fetchRemote(doc) {
+  const res = await fetch(`${GH_BASE}${DOCS[doc].path}?ref=${GH_BRANCH}&t=${Date.now()}`, { headers: ghHeaders(), cache: 'no-store' });
   if (res.status === 401) throw new Error('Token ungültig oder abgelaufen');
+  if (res.status === 404 && doc !== 'catalog') return { sha: null, items: [] }; // Datei wird beim ersten Speichern angelegt
   if (!res.ok) throw new Error('Server antwortet nicht (' + res.status + ')');
   const json = await res.json();
   const data = JSON.parse(b64decode(json.content));
   return { sha: json.sha, items: data.items || [] };
 }
 
-async function pushCatalog(items, sha) {
+async function pushRemote(doc, items, sha) {
   const body = {
-    message: `Katalog aktualisiert (${state.catalog.length} Artikel)`,
+    message: `${DOCS[doc].label} aktualisiert (${items.length} Einträge)`,
     content: b64encode(JSON.stringify({ updated: Date.now(), items }, null, 2) + '\n'),
-    sha, branch: GH_BRANCH,
+    branch: GH_BRANCH,
   };
-  const res = await fetch(GH_API, { method: 'PUT', headers: { ...ghHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  if (sha) body.sha = sha;
+  const res = await fetch(GH_BASE + DOCS[doc].path, { method: 'PUT', headers: { ...ghHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   if (res.status === 409 || res.status === 422) return false; // zwischenzeitlich geändert: neu versuchen
   if (res.status === 401) throw new Error('Token ungültig oder abgelaufen');
   if (res.status === 403 || res.status === 404) throw new Error('Token hat kein Schreibrecht');
   if (!res.ok) throw new Error('Speichern fehlgeschlagen (' + res.status + ')');
   return true;
+}
+
+async function syncDoc(doc) {
+  const s = state.sync[doc];
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const remote = await fetchRemote(doc);
+
+    // Erster Katalog-Abgleich: eigene Artikel dieses Geräts, die auf dem Server fehlen, als Änderung übernehmen
+    if (doc === 'catalog' && !s.syncedAt) {
+      const known = new Set(remote.items.map((i) => i.cat + '|' + i.name.toLowerCase()));
+      const std = new Set(defaultCatalog().map((i) => i.cat + '|' + i.name.toLowerCase()));
+      state.catalog.forEach((i) => {
+        const k = i.cat + '|' + i.name.toLowerCase();
+        if (!known.has(k) && !std.has(k)) s.pending.push({ type: 'add', item: i });
+      });
+    }
+
+    const pending = s.pending.slice();
+    if (pending.length && state.settings.ghToken) {
+      const merged = pending.reduce(DOCS[doc].apply, remote.items);
+      if (!(await pushRemote(doc, merged, remote.sha))) continue;
+      s.pending = s.pending.slice(pending.length); // währenddessen neu Erfasstes bleibt offen
+      s.remote = { items: merged };
+    } else {
+      s.remote = { items: remote.items };
+    }
+    s.syncedAt = Date.now();
+    return;
+  }
+  throw new Error('Konflikt beim Speichern – bitte nochmals versuchen');
 }
 
 async function syncCatalog(force, manual) {
@@ -546,68 +816,54 @@ async function syncCatalog(force, manual) {
     syncBusy = false; syncError = 'Zeitüberschreitung – bitte nochmals versuchen'; renderSyncStatus();
     if (manual) { btns.forEach((b) => { b.disabled = false; b.textContent = b.dataset.label; }); toast('⚠ ' + syncError); }
   }, 20000);
+
+  const before = new Map(state.inventory.map((e) => [e.id, e.qty + '/' + e.target]));
   try {
-    for (let attempt = 0; attempt < 3; attempt++) {
-      const remote = await fetchRemoteCatalog();
-      lastPull = Date.now();
-
-      // Erster Abgleich: eigene Artikel dieses Geräts, die auf dem Server fehlen, als Änderung übernehmen
-      if (!state.sync.syncedAt) {
-        const known = new Set(remote.items.map((i) => i.cat + '|' + i.name.toLowerCase()));
-        const std = new Set(defaultCatalog().map((i) => i.cat + '|' + i.name.toLowerCase()));
-        state.catalog.forEach((i) => {
-          const k = i.cat + '|' + i.name.toLowerCase();
-          if (!known.has(k) && !std.has(k)) state.sync.pending.push({ type: 'add', item: i });
-        });
-      }
-
-      const pending = state.sync.pending.slice();
-      if (pending.length && state.settings.ghToken) {
-        const merged = pending.reduce(applyOp, remote.items);
-        if (!(await pushCatalog(merged, remote.sha))) continue;
-        state.sync.pending = state.sync.pending.slice(pending.length); // währenddessen neu Erfasstes bleibt offen
-        state.sync.remote = { items: merged };
-      } else {
-        state.sync.remote = { items: remote.items };
-      }
-      state.sync.syncedAt = Date.now();
-      syncError = '';
-      break;
-    }
+    await syncDoc('catalog');
+    await syncDoc('inventory');
+    lastPull = Date.now();
+    syncError = '';
   } catch (e) {
     syncError = e.message || 'Unbekannter Fehler';
   }
   clearTimeout(timeout);
   syncBusy = false;
-  rebuildCatalog();
+  rebuildDoc('catalog');
+  rebuildDoc('inventory');
+  // Auf anderen Geräten geänderte Bestände: fehlende Mengen auch hier auf den Nachfüll-Auftrag setzen
+  state.inventory.forEach((e) => { if (before.get(e.id) !== e.qty + '/' + e.target) reconcileOrder(e); });
   save();
-  renderItems(); renderCatalogList(); renderSyncStatus();
+  renderAllLists();
   if (manual) {
     btns.forEach((b) => { b.disabled = false; b.textContent = b.dataset.label; });
+    const pend = pendingCount();
     if (syncError) toast('⚠ ' + syncError);
-    else if (state.sync.pending.length && !state.settings.ghToken) toast('Katalog geladen – eigene Änderungen nur auf diesem Gerät (kein Token)');
-    else toast(state.settings.ghToken ? '✓ Katalog synchronisiert' : '✓ Katalog geladen (nur lesen)');
+    else if (pend && !state.settings.ghToken) toast('Geladen – eigene Änderungen nur auf diesem Gerät (kein Token)');
+    else toast(state.settings.ghToken ? '✓ Katalog und Inventar synchronisiert' : '✓ Katalog und Inventar geladen (nur lesen)');
   }
 }
+
+const pendingCount = () => state.sync.catalog.pending.length + state.sync.inventory.pending.length;
 
 function renderSyncStatus() {
   const el = $('#syncStatus');
   if (!el) return;
-  const s = state.sync;
-  const n = s.pending.length;
+  const n = pendingCount();
+  const times = [state.sync.catalog.syncedAt, state.sync.inventory.syncedAt];
+  const syncedAt = times.every(Boolean) ? Math.min(...times) : null;
   let text;
   if (syncBusy) text = '⟳ Synchronisiere …';
   else if (syncError) text = '⚠ ' + syncError;
   else if (!navigator.onLine) text = 'Offline – wird synchronisiert, sobald Internet da ist';
   else if (n && !state.settings.ghToken) text = `${n} Änderung${n > 1 ? 'en' : ''} nur auf diesem Gerät (kein Token hinterlegt)`;
   else if (n) text = `${n} Änderung${n > 1 ? 'en' : ''} noch nicht hochgeladen`;
-  else if (s.syncedAt) text = `✓ Aktuell · ${new Date(s.syncedAt).toLocaleString('de-CH', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`
+  else if (syncedAt) text = `✓ Aktuell · ${new Date(syncedAt).toLocaleString('de-CH', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`
     + (state.settings.ghToken ? '' : ' · nur lesen');
   else text = 'Noch nicht synchronisiert';
   el.textContent = text;
   el.style.color = syncError ? 'var(--danger)' : '';
   const dot = $('#syncDot');
-  if (dot) dot.className = 'syncdot ' + (syncBusy ? 'busy' : syncError ? 'err' : n || !navigator.onLine ? 'warn' : s.syncedAt ? 'ok' : '');
+  if (dot) dot.className = 'syncdot ' + (syncBusy ? 'busy' : syncError ? 'err' : n || !navigator.onLine ? 'warn' : syncedAt ? 'ok' : '');
 }
 
 window.addEventListener('online', () => syncCatalog(true));

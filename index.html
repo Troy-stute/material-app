@@ -71,6 +71,14 @@
   .rowbtn:active { background: var(--accent-soft); }
   .chev { color: var(--muted); font-size: 22px; line-height: 1; }
   .hint a { color: var(--accent); }
+  .invhead { font-size: 15px; color: var(--muted); margin-bottom: 10px; }
+  .invhead b { color: var(--text); }
+  .lowtxt { color: var(--danger) !important; }
+  .rowlink { border: 0; background: transparent; color: var(--text); font: inherit; text-align: left; padding: 0; cursor: pointer; }
+  .stock { min-width: 48px; text-align: right; font-size: 20px; font-weight: 700; }
+  .stock small { font-size: 13px; font-weight: 500; color: var(--muted); }
+  .stock.low { color: var(--danger); }
+  #invFilter { margin-bottom: 4px; }
   .syncbox { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 550; }
   .syncdot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); flex: none; }
   .syncdot.ok { background: var(--ok); } .syncdot.warn { background: #e0a100; } .syncdot.err { background: var(--danger); }
@@ -168,7 +176,7 @@
       <span></span><button data-k="0">0</button><button class="plain" data-k="del" aria-label="Löschen">⌫</button>
     </div>
     <label class="switch"><input type="checkbox" id="lockRemember"> Auf diesem Gerät merken</label>
-    <div class="hint" style="opacity:.6;margin-top:14px">v1.6</div>
+    <div class="hint" style="opacity:.6;margin-top:14px">v2.0</div>
   </div>
 </div>
 <header>
@@ -190,6 +198,14 @@
     <div id="openList"></div>
     <div id="openActions"></div>
     <div id="doneWrap"></div>
+  </section>
+
+  <!-- INVENTAR -->
+  <section class="view" id="v-inventar">
+    <div class="invhead"><div id="invSummary"></div></div>
+    <div class="chips" id="invFilter"></div>
+    <div id="invList"></div>
+    <button class="btn" id="btnInvAdd">+ Artikel ins Inventar</button>
   </section>
 
   <!-- EINSTELLUNGEN -->
@@ -249,7 +265,7 @@
     <button class="btn secondary" id="btnExport">Sicherung exportieren</button>
     <button class="btn secondary" id="btnImport">Sicherung importieren</button>
     <input type="file" id="importFile" accept="application/json" hidden>
-    <p class="hint" style="text-align:center;margin-top:18px">Material Transit · v1.6</p>
+    <p class="hint" style="text-align:center;margin-top:18px">Material Transit · v2.0</p>
   </section>
 </main>
 
@@ -260,6 +276,9 @@
   <button data-view="auftrag">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5h10M9 12h10M9 19h10M4 5h.01M4 12h.01M4 19h.01"/></svg>
     Auftrag<span class="badge" id="badge"></span></button>
+  <button data-view="inventar">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5v8l9 5 9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg>
+    Inventar<span class="badge" id="badgeInv"></span></button>
   <button data-view="settings">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
     Einstellungen</button>
@@ -269,6 +288,6 @@
 <div class="sheet" id="sheet"></div>
 <div class="toast" id="toast"><span id="toastText"></span><button id="toastBtn"></button></div>
 
-<script src="app.js?v=8"></script>
+<script src="app.js?v=9"></script>
 </body>
 </html>
