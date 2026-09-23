@@ -9,9 +9,17 @@
       <stop offset="0" stop-color="#6fb0ff" stop-opacity=".55"/>
       <stop offset="1" stop-color="#6fb0ff" stop-opacity="0"/>
     </radialGradient>
-    <linearGradient id="cable" x1="0" y1="1" x2="1" y2="0">
-      <stop offset="0" stop-color="#8fc4ff"/>
-      <stop offset="1" stop-color="#ffffff"/>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#dde9fb"/>
+    </linearGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#3a7de0"/>
+      <stop offset="1" stop-color="#123a86"/>
+    </linearGradient>
+    <linearGradient id="cable" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#9fcaff"/>
     </linearGradient>
     <linearGradient id="badge" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#ffb13d"/>
@@ -24,25 +32,54 @@
 
   <rect width="512" height="512" fill="url(#bg)"/>
   <rect width="512" height="512" fill="url(#glow)"/>
-  <g transform="translate(-16 -10)">
+
+  <!-- Bodenschatten -->
+  <ellipse cx="256" cy="402" rx="160" ry="12" fill="#020a1c" opacity=".35"/>
 
   <g filter="url(#shadow)">
-    <!-- Kabel -->
-    <path d="M232 226 C232 318 128 300 128 372 C128 424 196 432 236 404"
-          fill="none" stroke="url(#cable)" stroke-width="30" stroke-linecap="round"/>
-    <!-- Stecker -->
-    <rect x="200" y="112" width="64" height="30" rx="6" fill="#dce9ff"/>
-    <rect x="212" y="120" width="40" height="8" rx="3" fill="#1848a8"/>
-    <path d="M186 142 H278 V194 Q278 214 258 214 H206 Q186 214 186 194 Z" fill="#ffffff"/>
-    <rect x="214" y="212" width="36" height="22" rx="8" fill="#ffffff"/>
-    <rect x="202" y="160" width="60" height="6" rx="3" fill="#c6dafa"/>
-    <rect x="202" y="176" width="60" height="6" rx="3" fill="#c6dafa"/>
+    <!-- Kabel mit Stecker, das ins Dach führt -->
+    <path d="M196 186 C196 214 246 208 246 244" fill="none" stroke="url(#cable)" stroke-width="22" stroke-linecap="round"/>
+    <rect x="172" y="94" width="48" height="24" rx="5" fill="#dce9ff"/>
+    <rect x="181" y="101" width="30" height="7" rx="3" fill="#1848a8"/>
+    <path d="M162 118 H230 V160 Q230 176 214 176 H178 Q162 176 162 160 Z" fill="#ffffff"/>
+    <rect x="182" y="172" width="28" height="18" rx="7" fill="#ffffff"/>
+    <rect x="174" y="132" width="44" height="5" rx="2.5" fill="#c6dafa"/>
+    <rect x="174" y="145" width="44" height="5" rx="2.5" fill="#c6dafa"/>
+
+    <!-- Transporter (Hochdach-Kastenwagen, Seitenansicht nach rechts) -->
+    <path d="M126 236 H314 Q326 236 333 246 L362 290 Q366 296 374 298 L390 302 Q404 306 404 320 V360 Q404 372 392 372 H122 Q110 372 110 360 V252 Q110 236 126 236 Z"
+          fill="url(#body)"/>
+    <!-- Seitenfenster Fahrerkabine -->
+    <path d="M306 250 H322 Q326 250 328 253 L354 292 H306 Z" fill="url(#glass)"/>
+    <!-- Seitenspiegel -->
+    <path d="M350 290 h14 v12 q0 4 -4 4 h-6 q-4 0 -4 -4 z" fill="#2a3345"/>
+    <!-- Türlinien -->
+    <path d="M298 246 V350 M228 246 V350" stroke="#b8cdee" stroke-width="3" stroke-linecap="round"/>
+    <rect x="282" y="306" width="12" height="4" rx="2" fill="#9db6dd"/>
+    <rect x="214" y="306" width="12" height="4" rx="2" fill="#9db6dd"/>
+    <!-- Sicke / Linie entlang der Seite -->
+    <path d="M114 322 H400" stroke="#c9d8f0" stroke-width="3"/>
+    <!-- Dunkle Kunststoff-Stossstange und Schweller -->
+    <path d="M110 344 H404 V360 Q404 372 392 372 H122 Q110 372 110 360 Z" fill="#2a3345"/>
+    <!-- Kühlergrill -->
+    <path d="M394 318 H404 V344 H388 Q386 330 394 318 Z" fill="#2a3345"/>
+    <path d="M392 326 H404 M390 334 H404" stroke="#48546b" stroke-width="2"/>
+    <!-- Scheinwerfer (gestreckt, Transit-typisch) -->
+    <path d="M370 299 L392 304 Q402 307 403 314 L380 311 Q372 309 370 299 Z" fill="#ffe08a"/>
+    <!-- Rücklicht -->
+    <rect x="110" y="262" width="7" height="40" rx="2" fill="#ff5a3c"/>
+    <!-- Räder -->
+    <circle cx="170" cy="372" r="31" fill="#0b1f47"/>
+    <circle cx="170" cy="372" r="24" fill="#1b2130"/>
+    <circle cx="170" cy="372" r="10" fill="#c6dafa"/>
+    <circle cx="348" cy="372" r="31" fill="#0b1f47"/>
+    <circle cx="348" cy="372" r="24" fill="#1b2130"/>
+    <circle cx="348" cy="372" r="10" fill="#c6dafa"/>
   </g>
 
   <!-- Plus-Badge -->
   <g filter="url(#shadow)">
-    <circle cx="346" cy="346" r="60" fill="url(#badge)"/>
-    <path d="M346 319 V373 M319 346 H373" stroke="#ffffff" stroke-width="17" stroke-linecap="round"/>
-  </g>
+    <circle cx="330" cy="158" r="50" fill="url(#badge)"/>
+    <path d="M330 135 V181 M307 158 H353" stroke="#ffffff" stroke-width="15" stroke-linecap="round"/>
   </g>
 </svg>
