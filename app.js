@@ -436,6 +436,62 @@ $('#importFile').addEventListener('change', async (e) => {
   e.target.value = '';
 });
 
+// ---------- PIN-Sperre (Sichtschutz, kein echter Schutz: der Code ist öffentlich) ----------
+const PIN_HASH = '236177825d852dc8a535f6171ac4dd0409e074966cc48ffb423e068bcae956ab';
+const PIN_LEN = 4;
+const UNLOCK_KEY = 'material-transit-unlock';
+let pinInput = '';
+
+async function hashPin(pin) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('material-transit:' + pin));
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+function isUnlocked() {
+  try {
+    return sessionStorage.getItem(UNLOCK_KEY) === PIN_HASH || localStorage.getItem(UNLOCK_KEY) === PIN_HASH;
+  } catch (e) { return false; }
+}
+function lock() {
+  try { sessionStorage.removeItem(UNLOCK_KEY); localStorage.removeItem(UNLOCK_KEY); } catch (e) { /* egal */ }
+  pinInput = '';
+  renderDots();
+  $('#lockErr').textContent = '';
+  $('#lock').classList.remove('hidden');
+}
+function renderDots() {
+  $('#lockDots').innerHTML = Array.from({ length: PIN_LEN }, (_, i) => `<span class="${i < pinInput.length ? 'on' : ''}"></span>`).join('');
+}
+async function pressKey(k) {
+  if (k === 'del') { pinInput = pinInput.slice(0, -1); renderDots(); return; }
+  if (pinInput.length >= PIN_LEN) return;
+  pinInput += k;
+  $('#lockErr').textContent = '';
+  renderDots();
+  if (pinInput.length < PIN_LEN) return;
+
+  if (await hashPin(pinInput) === PIN_HASH) {
+    try {
+      sessionStorage.setItem(UNLOCK_KEY, PIN_HASH);
+      if ($('#lockRemember').checked) localStorage.setItem(UNLOCK_KEY, PIN_HASH);
+    } catch (err) { /* ohne Speicher: nur bis zum Neuladen entsperrt */ }
+    setTimeout(() => { $('#lock').classList.add('hidden'); pinInput = ''; renderDots(); }, 120);
+  } else {
+    $('#lockErr').textContent = 'Falsche PIN';
+    const d = $('#lockDots');
+    d.classList.remove('shake'); void d.offsetWidth; d.classList.add('shake');
+    setTimeout(() => { pinInput = ''; renderDots(); }, 350);
+  }
+}
+$('#keypad').querySelectorAll('button').forEach((b) => b.addEventListener('click', () => pressKey(b.dataset.k)));
+document.addEventListener('keydown', (e) => {
+  if ($('#lock').classList.contains('hidden')) return;
+  if (/^[0-9]$/.test(e.key)) pressKey(e.key);
+  else if (e.key === 'Backspace') pressKey('del');
+});
+$('#btnLock').addEventListener('click', lock);
+renderDots();
+if (isUnlocked()) $('#lock').classList.add('hidden');
+
 function renderHeader() { $('#hdrVehicle').textContent = state.settings.vehicle; }
 
 function init() {
