@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0a1a3a"/>
+      <stop offset="0.55" stop-color="#1848a8"/>
+      <stop offset="1" stop-color="#2f86ff"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.72" cy="0.28" r="0.6">
+      <stop offset="0" stop-color="#6fb0ff" stop-opacity=".55"/>
+      <stop offset="1" stop-color="#6fb0ff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="cable" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#8fc4ff"/>
+      <stop offset="1" stop-color="#ffffff"/>
+    </linearGradient>
+    <linearGradient id="badge" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffb13d"/>
+      <stop offset="1" stop-color="#ff6a2b"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#020a1c" flood-opacity=".45"/>
+    </filter>
+  </defs>
+
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <rect width="512" height="512" fill="url(#glow)"/>
+  <g transform="translate(-16 -10)">
+
+  <g filter="url(#shadow)">
+    <!-- Kabel -->
+    <path d="M232 226 C232 318 128 300 128 372 C128 424 196 432 236 404"
+          fill="none" stroke="url(#cable)" stroke-width="30" stroke-linecap="round"/>
+    <!-- Stecker -->
+    <rect x="200" y="112" width="64" height="30" rx="6" fill="#dce9ff"/>
+    <rect x="212" y="120" width="40" height="8" rx="3" fill="#1848a8"/>
+    <path d="M186 142 H278 V194 Q278 214 258 214 H206 Q186 214 186 194 Z" fill="#ffffff"/>
+    <rect x="214" y="212" width="36" height="22" rx="8" fill="#ffffff"/>
+    <rect x="202" y="160" width="60" height="6" rx="3" fill="#c6dafa"/>
+    <rect x="202" y="176" width="60" height="6" rx="3" fill="#c6dafa"/>
+  </g>
+
+  <!-- Plus-Badge -->
+  <g filter="url(#shadow)">
+    <circle cx="346" cy="346" r="60" fill="url(#badge)"/>
+    <path d="M346 319 V373 M319 346 H373" stroke="#ffffff" stroke-width="17" stroke-linecap="round"/>
+  </g>
+  </g>
+</svg>
