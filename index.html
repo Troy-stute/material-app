@@ -66,6 +66,11 @@
   .qty span { min-width: 28px; text-align: center; font-weight: 650; }
   .icon-btn { border: 0; background: transparent; color: var(--muted); font-size: 20px; width: 36px; height: 36px; border-radius: 10px; }
   .done .title { text-decoration: line-through; color: var(--muted); }
+  .rowbtn { width: 100%; border: 0; border-top: 1px solid var(--line); background: transparent; color: var(--text);
+    font: inherit; text-align: left; cursor: pointer; }
+  .rowbtn:active { background: var(--accent-soft); }
+  .chev { color: var(--muted); font-size: 22px; line-height: 1; }
+  .hint a { color: var(--accent); }
 
   .btn { display: block; width: 100%; border: 0; border-radius: 12px; padding: 14px; font-size: 16px; font-weight: 600;
     background: var(--accent); color: var(--accent-text); margin-top: 10px; }
@@ -158,7 +163,7 @@
       <span></span><button data-k="0">0</button><button class="plain" data-k="del" aria-label="Löschen">⌫</button>
     </div>
     <label class="switch"><input type="checkbox" id="lockRemember"> Auf diesem Gerät merken</label>
-    <div class="hint" style="opacity:.6;margin-top:14px">v1.4</div>
+    <div class="hint" style="opacity:.6;margin-top:14px">v1.5</div>
   </div>
 </div>
 <header>
@@ -192,6 +197,31 @@
       <input type="email" id="setEmail">
     </div>
 
+    <h2>Katalog verwalten</h2>
+    <div class="hint" id="syncStatus" style="margin:0 0 8px"></div>
+    <button class="btn" id="btnCatNew" style="margin-top:0">+ Neuer Artikel</button>
+    <div class="card" id="catalogList" style="margin-top:10px"></div>
+    <button class="btn secondary" id="btnSyncNow">Jetzt synchronisieren</button>
+    <button class="btn secondary" id="btnResetCatalog">Fehlende Standard-Artikel hinzufügen</button>
+
+    <h2>Geräte-Synchronisation</h2>
+    <div class="card" style="padding:4px 14px 14px">
+      <p class="hint">Der Katalog wird auf GitHub gespeichert und auf allen Geräten automatisch geladen.
+        Zum <b>Bearbeiten</b> braucht das Gerät einen GitHub-Token. Ohne Token wird der Katalog nur gelesen.</p>
+      <label class="f" for="ghToken">GitHub-Token</label>
+      <input type="password" id="ghToken" placeholder="github_pat_…" autocomplete="off" spellcheck="false">
+      <details style="margin-top:10px">
+        <summary class="hint" style="color:var(--accent);font-weight:600">So erstellst du einen Token ▾</summary>
+        <ol class="hint" style="padding-left:18px;margin:8px 0 0">
+          <li>Auf github.com einloggen und <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">diesen Link</a> öffnen.</li>
+          <li>Name: <i>Material-App</i>, Ablauf nach Wunsch (z.B. 1 Jahr).</li>
+          <li>Repository access: <b>Only select repositories</b> → <b>material-app</b>.</li>
+          <li>Permissions → Repository permissions → <b>Contents: Read and write</b>.</li>
+          <li><b>Generate token</b>, kopieren und hier einfügen.</li>
+        </ol>
+      </details>
+    </div>
+
     <h2>Automatischer Mailversand (optional)</h2>
     <div class="card" style="padding:4px 14px 14px">
       <p class="hint">Mit einem Gratis-Konto bei <b>EmailJS</b> geht die Mail direkt raus, ohne die Mail-App zu öffnen.
@@ -205,10 +235,6 @@
       <p class="hint">Im EmailJS-Template: Empfänger <code>{{to_email}}</code>, Betreff <code>{{subject}}</code>, Inhalt <code>{{message}}</code>.</p>
     </div>
 
-    <h2>Katalog verwalten</h2>
-    <div class="card" id="catalogList"></div>
-    <button class="btn secondary" id="btnResetCatalog">Standard-Katalog wiederherstellen</button>
-
     <h2>Sperre</h2>
     <button class="btn secondary" id="btnLock">App jetzt sperren</button>
     <p class="hint">Sperrt die App und vergisst „Auf diesem Gerät merken".</p>
@@ -217,7 +243,7 @@
     <button class="btn secondary" id="btnExport">Sicherung exportieren</button>
     <button class="btn secondary" id="btnImport">Sicherung importieren</button>
     <input type="file" id="importFile" accept="application/json" hidden>
-    <p class="hint" style="text-align:center;margin-top:18px">Material Transit · v1.4</p>
+    <p class="hint" style="text-align:center;margin-top:18px">Material Transit · v1.5</p>
   </section>
 </main>
 
@@ -237,6 +263,6 @@
 <div class="sheet" id="sheet"></div>
 <div class="toast" id="toast"><span id="toastText"></span><button id="toastBtn"></button></div>
 
-<script src="app.js?v=6"></script>
+<script src="app.js?v=7"></script>
 </body>
 </html>

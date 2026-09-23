@@ -47,8 +47,11 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&
 const fmtLen = (l) => (l == null || l === '' ? '' : String(l).replace('.', ',') + ' m');
 const fmtDate = (ts) => new Date(ts).toLocaleDateString('de-CH', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
+// gleiche IDs wie in catalog.json auf GitHub, damit Geräte dieselben Artikel erkennen
+const slug = (s) => s.toLowerCase().replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/→/g, '-')
+  .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 function defaultCatalog() {
-  return DEFAULT_CATALOG.map(([cat, name, len]) => ({ id: uid(), cat, name, len }));
+  return DEFAULT_CATALOG.map(([cat, name, len]) => ({ id: 'std-' + slug(name), cat, name, len }));
 }
 
 // ---------- Zustand ----------
@@ -62,13 +65,18 @@ function load() {
       s.settings = Object.assign(defaultSettings(), s.settings);
       s.catalog = s.catalog || defaultCatalog();
       s.orders = s.orders || [];
+      s.sync = Object.assign(defaultSync(), s.sync);
       return s;
     }
   } catch (e) { /* ungültige Daten: neu starten */ }
-  return { settings: defaultSettings(), catalog: defaultCatalog(), orders: [] };
+  return { settings: defaultSettings(), catalog: defaultCatalog(), orders: [], sync: defaultSync() };
 }
 function defaultSettings() {
-  return { vehicle: 'Ford Transit', email: 'joel.stutz@avs.ch', ejService: '', ejTemplate: '', ejKey: '' };
+  return { vehicle: 'Ford Transit', email: 'joel.stutz@avs.ch', ejService: '', ejTemplate: '', ejKey: '', ghToken: '' };
+}
+function defaultSync() {
+  // remote: letzter bekannter Katalog vom Server, pending: noch nicht hochgeladene Änderungen
+  return { remote: null, pending: [], syncedAt: null };
 }
 function save() {
   try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) { toast('Speichern fehlgeschlagen'); }
@@ -170,7 +178,7 @@ function openItemSheet(item) {
       cat = $('#cCat').value;
       if (!name) { $('#cName').focus(); return; }
       if ($('#cKeep').checked && !state.catalog.some((i) => i.cat === cat && i.name.toLowerCase() === name.toLowerCase())) {
-        state.catalog.push({ id: uid(), cat, name, len: hasLen });
+        catalogOp({ type: 'add', item: { id: uid(), cat, name, len: hasLen } });
       }
     } else {
       name = item.name; cat = item.cat;
@@ -373,14 +381,17 @@ function renderSettings() {
   $('#ejService').value = s.ejService;
   $('#ejTemplate').value = s.ejTemplate;
   $('#ejKey').value = s.ejKey;
+  $('#ghToken').value = s.ghToken;
   renderCatalogList();
+  renderSyncStatus();
 }
 
-[['#setVehicle', 'vehicle'], ['#setEmail', 'email'], ['#ejService', 'ejService'], ['#ejTemplate', 'ejTemplate'], ['#ejKey', 'ejKey']]
+[['#setVehicle', 'vehicle'], ['#setEmail', 'email'], ['#ejService', 'ejService'], ['#ejTemplate', 'ejTemplate'], ['#ejKey', 'ejKey'], ['#ghToken', 'ghToken']]
   .forEach(([sel, key]) => $(sel).addEventListener('change', (e) => {
     state.settings[key] = e.target.value.trim();
     if (key === 'vehicle' && !state.settings.vehicle) state.settings.vehicle = 'Ford Transit';
     save(); renderHeader();
+    if (key === 'ghToken') syncCatalog(true);
   }));
 
 function renderCatalogList() {
@@ -389,31 +400,202 @@ function renderCatalogList() {
     if (!items.length) return '';
     return `<div class="row" style="background:var(--bg)"><div class="main meta" style="font-weight:600">${esc(cat)}</div></div>` +
       items.map((i) => `
-        <div class="row">
+        <button class="row rowbtn" data-edit="${esc(i.id)}">
           <div class="main"><div class="title">${esc(i.name)}</div>${i.len ? '<div class="meta">mit Länge</div>' : ''}</div>
-          <button class="icon-btn" data-del="${i.id}" aria-label="Löschen">🗑</button>
-        </div>`).join('');
+          <span class="chev">›</span>
+        </button>`).join('');
   }).join('');
-  $('#catalogList').querySelectorAll('[data-del]').forEach((b) => b.addEventListener('click', () => {
-    const idx = state.catalog.findIndex((i) => i.id === b.dataset.del);
-    const [item] = state.catalog.splice(idx, 1);
-    save(); renderCatalogList(); renderItems();
-    toast(`${item.name} aus Katalog gelöscht`, 'Rückgängig', () => {
-      state.catalog.splice(idx, 0, item); save(); renderCatalogList(); renderItems();
-    });
+  $('#catalogList').querySelectorAll('[data-edit]').forEach((b) => b.addEventListener('click', () => {
+    openCatalogSheet(state.catalog.find((i) => i.id === b.dataset.edit));
   }));
 }
 
-$('#btnResetCatalog').addEventListener('click', () => {
-  if (!confirm('Standard-Katalog wiederherstellen? Eigene Katalog-Artikel bleiben erhalten.')) return;
-  defaultCatalog().forEach((d) => {
-    if (!state.catalog.some((i) => i.cat === d.cat && i.name === d.name)) state.catalog.push(d);
+// Bottom-Sheet: Katalogartikel neu anlegen (item = null) oder bearbeiten
+function openCatalogSheet(item) {
+  const isNew = !item;
+  $('#sheet').innerHTML = `
+    <div class="grab"></div>
+    <h3>${isNew ? 'Neuer Katalog-Artikel' : 'Artikel bearbeiten'}</h3>
+    <label class="f" for="kName">Bezeichnung</label>
+    <input type="text" id="kName" autocomplete="off" value="${isNew ? '' : esc(item.name)}" placeholder="z.B. USB-C Kabel">
+    <label class="f" for="kCat">Kategorie</label>
+    <select id="kCat">${CATEGORIES.map((c) => `<option ${c === (isNew ? currentCat : item.cat) ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select>
+    <label class="switch"><input type="checkbox" id="kLen" ${!isNew && item.len ? 'checked' : ''}> Länge angeben</label>
+    <button class="btn" id="kSave">${isNew ? 'Hinzufügen' : 'Speichern'}</button>
+    ${isNew ? '' : '<button class="btn danger" id="kDel">Aus Katalog löschen</button>'}
+    <button class="btn secondary" id="kCancel">Abbrechen</button>`;
+
+  $('#kCancel').addEventListener('click', closeSheet);
+  $('#kSave').addEventListener('click', () => {
+    const name = $('#kName').value.trim();
+    const cat = $('#kCat').value;
+    const len = $('#kLen').checked;
+    if (!name) { $('#kName').focus(); return; }
+    const dup = state.catalog.some((i) => i.cat === cat && i.name.toLowerCase() === name.toLowerCase() && (isNew || i.id !== item.id));
+    if (dup) { toast('Diesen Artikel gibt es schon'); return; }
+    if (isNew) catalogOp({ type: 'add', item: { id: uid(), cat, name, len } });
+    else catalogOp({ type: 'update', id: item.id, fields: { cat, name, len } });
+    closeSheet();
+    toast(isNew ? `${name} hinzugefügt` : `${name} gespeichert`);
   });
-  save(); renderCatalogList(); renderItems(); toast('Katalog wiederhergestellt');
+  if (!isNew) {
+    $('#kDel').addEventListener('click', () => {
+      if (!confirm(`„${item.name}“ aus dem Katalog löschen?`)) return;
+      catalogOp({ type: 'delete', id: item.id });
+      closeSheet();
+      toast(`${item.name} gelöscht`, 'Rückgängig', () => catalogOp({ type: 'add', item }));
+    });
+  }
+  openSheet();
+  if (isNew) setTimeout(() => { const el = $('#kName'); if (el) el.focus(); }, 250);
+}
+
+$('#btnCatNew').addEventListener('click', () => openCatalogSheet(null));
+$('#btnSyncNow').addEventListener('click', () => syncCatalog(true));
+
+$('#btnResetCatalog').addEventListener('click', () => {
+  if (!confirm('Fehlende Standard-Artikel wieder hinzufügen? Eigene Artikel bleiben erhalten.')) return;
+  let n = 0;
+  defaultCatalog().forEach((d) => {
+    if (!state.catalog.some((i) => i.id === d.id || (i.cat === d.cat && i.name === d.name))) { catalogOp({ type: 'add', item: d }); n++; }
+  });
+  toast(n ? `${n} Standard-Artikel hinzugefügt` : 'Alle Standard-Artikel sind vorhanden');
 });
 
+// ---------- Katalog-Synchronisation über GitHub ----------
+// Der Katalog liegt als catalog.json im Zweig "data" (kein Neubau der Webseite bei Änderungen).
+// Lesen geht ohne Anmeldung; Schreiben braucht einen GitHub-Token mit Schreibrecht auf "Contents".
+const GH_API = 'https://api.github.com/repos/Troy-stute/material-app/contents/catalog.json';
+const GH_BRANCH = 'data';
+
+function applyOp(items, op) {
+  if (op.type === 'add') {
+    if (items.some((i) => i.id === op.item.id || (i.cat === op.item.cat && i.name.toLowerCase() === op.item.name.toLowerCase()))) return items;
+    return [...items, { ...op.item }];
+  }
+  if (op.type === 'update') return items.map((i) => (i.id === op.id ? { ...i, ...op.fields } : i));
+  if (op.type === 'delete') return items.filter((i) => i.id !== op.id);
+  return items;
+}
+
+function rebuildCatalog() {
+  const base = state.sync.remote ? state.sync.remote.items : state.catalog;
+  state.catalog = state.sync.pending.reduce(applyOp, base.map((i) => ({ ...i })));
+}
+
+function catalogOp(op) {
+  state.catalog = applyOp(state.catalog, op);
+  state.sync.pending.push(op);
+  save();
+  renderItems(); renderCatalogList(); renderSyncStatus();
+  scheduleSync();
+}
+
+let syncTimer, syncBusy = false, lastPull = 0, syncError = '';
+function scheduleSync() {
+  clearTimeout(syncTimer);
+  if (state.settings.ghToken) syncTimer = setTimeout(() => syncCatalog(true), 1500);
+}
+
+const b64encode = (str) => btoa(String.fromCharCode(...new TextEncoder().encode(str)));
+const b64decode = (b64) => new TextDecoder().decode(Uint8Array.from(atob(b64.replace(/\s/g, '')), (c) => c.charCodeAt(0)));
+
+function ghHeaders() {
+  const h = { Accept: 'application/vnd.github+json' };
+  if (state.settings.ghToken) h.Authorization = 'Bearer ' + state.settings.ghToken;
+  return h;
+}
+
+async function fetchRemoteCatalog() {
+  const res = await fetch(`${GH_API}?ref=${GH_BRANCH}&t=${Date.now()}`, { headers: ghHeaders(), cache: 'no-store' });
+  if (res.status === 401) throw new Error('Token ungültig oder abgelaufen');
+  if (!res.ok) throw new Error('Server antwortet nicht (' + res.status + ')');
+  const json = await res.json();
+  const data = JSON.parse(b64decode(json.content));
+  return { sha: json.sha, items: data.items || [] };
+}
+
+async function pushCatalog(items, sha) {
+  const body = {
+    message: `Katalog aktualisiert (${state.catalog.length} Artikel)`,
+    content: b64encode(JSON.stringify({ updated: Date.now(), items }, null, 2) + '\n'),
+    sha, branch: GH_BRANCH,
+  };
+  const res = await fetch(GH_API, { method: 'PUT', headers: { ...ghHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  if (res.status === 409 || res.status === 422) return false; // zwischenzeitlich geändert: neu versuchen
+  if (res.status === 401) throw new Error('Token ungültig oder abgelaufen');
+  if (res.status === 403 || res.status === 404) throw new Error('Token hat kein Schreibrecht');
+  if (!res.ok) throw new Error('Speichern fehlgeschlagen (' + res.status + ')');
+  return true;
+}
+
+async function syncCatalog(force) {
+  if (syncBusy || !navigator.onLine) { renderSyncStatus(); return; }
+  if (!force && Date.now() - lastPull < 30000) return;
+  syncBusy = true; renderSyncStatus();
+  try {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const remote = await fetchRemoteCatalog();
+      lastPull = Date.now();
+
+      // Erster Abgleich: eigene Artikel dieses Geräts, die auf dem Server fehlen, als Änderung übernehmen
+      if (!state.sync.syncedAt) {
+        const known = new Set(remote.items.map((i) => i.cat + '|' + i.name.toLowerCase()));
+        const std = new Set(defaultCatalog().map((i) => i.cat + '|' + i.name.toLowerCase()));
+        state.catalog.forEach((i) => {
+          const k = i.cat + '|' + i.name.toLowerCase();
+          if (!known.has(k) && !std.has(k)) state.sync.pending.push({ type: 'add', item: i });
+        });
+      }
+
+      const pending = state.sync.pending.slice();
+      if (pending.length && state.settings.ghToken) {
+        const merged = pending.reduce(applyOp, remote.items);
+        if (!(await pushCatalog(merged, remote.sha))) continue;
+        state.sync.pending = state.sync.pending.slice(pending.length); // währenddessen neu Erfasstes bleibt offen
+        state.sync.remote = { items: merged };
+      } else {
+        state.sync.remote = { items: remote.items };
+      }
+      state.sync.syncedAt = Date.now();
+      syncError = '';
+      break;
+    }
+  } catch (e) {
+    syncError = e.message || 'Unbekannter Fehler';
+  }
+  syncBusy = false;
+  rebuildCatalog();
+  save();
+  renderItems(); renderCatalogList(); renderSyncStatus();
+}
+
+function renderSyncStatus() {
+  const el = $('#syncStatus');
+  if (!el) return;
+  const s = state.sync;
+  const n = s.pending.length;
+  let text;
+  if (syncBusy) text = '⟳ Synchronisiere …';
+  else if (syncError) text = '⚠ ' + syncError;
+  else if (!navigator.onLine) text = 'Offline – wird synchronisiert, sobald Internet da ist';
+  else if (n && !state.settings.ghToken) text = `${n} Änderung${n > 1 ? 'en' : ''} nur auf diesem Gerät (kein Token hinterlegt)`;
+  else if (n) text = `${n} Änderung${n > 1 ? 'en' : ''} noch nicht hochgeladen`;
+  else if (s.syncedAt) text = `✓ Aktuell · ${new Date(s.syncedAt).toLocaleString('de-CH', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`
+    + (state.settings.ghToken ? '' : ' · nur lesen');
+  else text = 'Noch nicht synchronisiert';
+  el.textContent = text;
+  el.style.color = syncError ? 'var(--danger)' : '';
+}
+
+window.addEventListener('online', () => syncCatalog(true));
+window.addEventListener('offline', renderSyncStatus);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') syncCatalog(false); });
+
 $('#btnExport').addEventListener('click', () => {
-  const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+  const copy = JSON.parse(JSON.stringify(state));
+  copy.settings.ghToken = ''; // Token nie in Sicherungsdateien
+  const blob = new Blob([JSON.stringify(copy, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = `material-transit-${new Date().toISOString().slice(0, 10)}.json`;
@@ -428,6 +610,7 @@ $('#importFile').addEventListener('change', async (e) => {
     const data = JSON.parse(await file.text());
     if (!Array.isArray(data.catalog) || !Array.isArray(data.orders)) throw new Error();
     if (!confirm('Aktuelle Daten durch die Sicherung ersetzen?')) return;
+    data.settings = Object.assign({}, data.settings, { ghToken: state.settings.ghToken });
     localStorage.setItem(STORE_KEY, JSON.stringify(data));
     state = load(); save(); init(); toast('Sicherung importiert');
   } catch (err) {
@@ -508,6 +691,7 @@ function init() {
   if ($('#v-settings').classList.contains('active')) renderSettings();
 }
 init();
+syncCatalog(true);
 
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
   navigator.serviceWorker.register('sw.js').catch(() => {});
