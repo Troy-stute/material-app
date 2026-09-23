@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="de-CH">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f5fbf">
+<title>Material Transit</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  :root {
+    --bg: #f3f5f8; --card: #ffffff; --text: #1a1f29; --muted: #6b7482;
+    --line: #dde2ea; --accent: #1f5fbf; --accent-soft: #e3ecfa; --accent-text: #ffffff;
+    --ok: #1f8a4c; --ok-soft: #e1f3e8; --danger: #c43d3d; --danger-soft: #fbe7e7;
+    --shadow: 0 1px 3px rgba(20,30,50,.08), 0 4px 14px rgba(20,30,50,.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12151b; --card: #1c2029; --text: #e8ebf0; --muted: #98a1ae;
+      --line: #2c323d; --accent: #5b9bff; --accent-soft: #1f2d45; --accent-text: #0b1220;
+      --ok: #4cc47f; --ok-soft: #1a3326; --danger: #ff6b6b; --danger-soft: #3a1f22;
+      --shadow: 0 1px 3px rgba(0,0,0,.4);
+    }
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  body { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
+  header { position: sticky; top: 0; z-index: 5; background: #1f5fbf; color: #fff;
+    padding: calc(12px + env(safe-area-inset-top)) 16px 12px; display: flex; align-items: center; gap: 10px; }
+  header h1 { font-size: 18px; margin: 0; font-weight: 650; flex: 1; }
+  header .sub { font-size: 13px; opacity: .85; }
+  main { padding: 16px; max-width: 640px; margin: 0 auto; }
+  .view { display: none; } .view.active { display: block; }
+  h2 { font-size: 15px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted);
+    margin: 20px 0 8px; font-weight: 600; }
+  h2:first-child { margin-top: 0; }
+
+  .chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; margin: 0 -16px; padding-left: 16px; padding-right: 16px; scrollbar-width: none; }
+  .chips::-webkit-scrollbar { display: none; }
+  .chip { flex: none; border: 1px solid var(--line); background: var(--card); color: var(--text);
+    border-radius: 999px; padding: 9px 16px; font-size: 15px; font-weight: 500; }
+  .chip.on { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+
+  .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 12px; }
+  .tile { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 12px;
+    min-height: 64px; text-align: left; font-size: 15px; font-weight: 550; color: var(--text); box-shadow: var(--shadow);
+    display: flex; flex-direction: column; justify-content: center; gap: 2px; }
+  .tile small { color: var(--muted); font-weight: 400; font-size: 12px; }
+  .tile.add { border-style: dashed; box-shadow: none; color: var(--accent); background: transparent; align-items: center; text-align: center; }
+  .tile:active { transform: scale(.98); }
+
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); overflow: hidden; }
+  .row { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-top: 1px solid var(--line); }
+  .row:first-child { border-top: 0; }
+  .row .main { flex: 1; min-width: 0; }
+  .row .title { font-weight: 550; }
+  .row .meta { font-size: 13px; color: var(--muted); }
+  .check { width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--line); background: transparent;
+    flex: none; display: grid; place-items: center; color: transparent; font-size: 16px; }
+  .check.on { background: var(--ok); border-color: var(--ok); color: #fff; }
+  .qty { display: flex; align-items: center; gap: 4px; }
+  .qty button { width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg);
+    color: var(--text); font-size: 18px; line-height: 1; }
+  .qty span { min-width: 28px; text-align: center; font-weight: 650; }
+  .icon-btn { border: 0; background: transparent; color: var(--muted); font-size: 20px; width: 36px; height: 36px; border-radius: 10px; }
+  .done .title { text-decoration: line-through; color: var(--muted); }
+
+  .btn { display: block; width: 100%; border: 0; border-radius: 12px; padding: 14px; font-size: 16px; font-weight: 600;
+    background: var(--accent); color: var(--accent-text); margin-top: 10px; }
+  .btn.secondary { background: var(--accent-soft); color: var(--accent); }
+  .btn.ok { background: var(--ok-soft); color: var(--ok); }
+  .btn.danger { background: var(--danger-soft); color: var(--danger); }
+  .btn:disabled { opacity: .45; }
+  .empty { text-align: center; color: var(--muted); padding: 32px 16px; }
+  .empty b { display: block; font-size: 17px; color: var(--text); margin-bottom: 4px; }
+
+  label.f { display: block; font-size: 13px; color: var(--muted); margin: 14px 0 6px; font-weight: 500; }
+  input[type=text], input[type=email], input[type=number], textarea, select {
+    width: 100%; font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 12px; }
+  textarea { min-height: 70px; resize: vertical; }
+  .switch { display: flex; align-items: center; gap: 10px; margin-top: 14px; font-size: 15px; }
+  .switch input { width: 22px; height: 22px; accent-color: var(--accent); }
+  .hint { font-size: 13px; color: var(--muted); margin-top: 6px; }
+
+  nav { position: fixed; bottom: 0; left: 0; right: 0; background: var(--card); border-top: 1px solid var(--line);
+    display: flex; padding-bottom: env(safe-area-inset-bottom); z-index: 10; }
+  nav button { flex: 1; border: 0; background: transparent; color: var(--muted); padding: 10px 4px 12px;
+    font-size: 12px; font-weight: 600; display: flex; flex-direction: column; align-items: center; gap: 3px; position: relative; }
+  nav button svg { width: 24px; height: 24px; }
+  nav button.on { color: var(--accent); }
+  .badge { position: absolute; top: 4px; left: 50%; margin-left: 6px; background: var(--danger); color: #fff;
+    border-radius: 999px; font-size: 11px; min-width: 18px; height: 18px; padding: 0 5px; display: grid; place-items: center; }
+  .badge:empty { display: none; }
+
+  .backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 20; display: none; }
+  .sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 21; background: var(--card);
+    border-radius: 18px 18px 0 0; padding: 8px 16px calc(16px + env(safe-area-inset-bottom));
+    max-height: 90vh; overflow-y: auto; transform: translateY(100%); transition: transform .22s ease; max-width: 640px; margin: 0 auto; }
+  .sheet.open { transform: none; }
+  .sheet .grab { width: 40px; height: 4px; border-radius: 2px; background: var(--line); margin: 4px auto 12px; }
+  .sheet h3 { margin: 0 0 4px; font-size: 20px; }
+  .lens { display: flex; flex-wrap: wrap; gap: 8px; }
+  .lens .chip { padding: 8px 14px; }
+  .bigqty { display: flex; align-items: center; justify-content: center; gap: 18px; }
+  .bigqty button { width: 52px; height: 52px; border-radius: 14px; border: 1px solid var(--line); background: var(--bg); color: var(--text); font-size: 26px; }
+  .bigqty span { font-size: 30px; font-weight: 700; min-width: 50px; text-align: center; }
+
+  .toast { position: fixed; left: 16px; right: 16px; bottom: calc(84px + env(safe-area-inset-bottom)); z-index: 30;
+    background: #222833; color: #fff; border-radius: 12px; padding: 12px 14px; display: flex; align-items: center; gap: 12px;
+    box-shadow: 0 6px 24px rgba(0,0,0,.25); opacity: 0; pointer-events: none; transition: opacity .2s; max-width: 608px; margin: 0 auto; }
+  .toast.show { opacity: 1; pointer-events: auto; }
+  .toast span { flex: 1; }
+  .toast button { border: 0; background: transparent; color: #8fb8ff; font-weight: 700; font-size: 15px; }
+  details summary { cursor: pointer; list-style: none; }
+  details summary::-webkit-details-marker { display: none; }
+</style>
+</head>
+<body>
+<header>
+  <div style="flex:1">
+    <h1>Material nachfüllen</h1>
+    <div class="sub" id="hdrVehicle">Ford Transit</div>
+  </div>
+</header>
+
+<main>
+  <!-- ERFASSEN -->
+  <section class="view active" id="v-erfassen">
+    <div class="chips" id="cats"></div>
+    <div class="grid" id="items"></div>
+  </section>
+
+  <!-- AUFTRAG -->
+  <section class="view" id="v-auftrag">
+    <div id="openList"></div>
+    <div id="openActions"></div>
+    <div id="doneWrap"></div>
+  </section>
+
+  <!-- EINSTELLUNGEN -->
+  <section class="view" id="v-settings">
+    <h2>Allgemein</h2>
+    <div class="card" style="padding:4px 14px 14px">
+      <label class="f" for="setVehicle">Fahrzeug</label>
+      <input type="text" id="setVehicle">
+      <label class="f" for="setEmail">Empfänger E-Mail</label>
+      <input type="email" id="setEmail">
+    </div>
+
+    <h2>Automatischer Mailversand (optional)</h2>
+    <div class="card" style="padding:4px 14px 14px">
+      <p class="hint">Mit einem Gratis-Konto bei <b>EmailJS</b> geht die Mail direkt raus, ohne die Mail-App zu öffnen.
+        Leer lassen, dann wird die Mail-App verwendet.</p>
+      <label class="f" for="ejService">Service ID</label>
+      <input type="text" id="ejService" placeholder="service_xxxxxxx" autocomplete="off">
+      <label class="f" for="ejTemplate">Template ID</label>
+      <input type="text" id="ejTemplate" placeholder="template_xxxxxxx" autocomplete="off">
+      <label class="f" for="ejKey">Public Key</label>
+      <input type="text" id="ejKey" placeholder="xxxxxxxxxxxxxxx" autocomplete="off">
+      <p class="hint">Im EmailJS-Template: Empfänger <code>{{to_email}}</code>, Betreff <code>{{subject}}</code>, Inhalt <code>{{message}}</code>.</p>
+    </div>
+
+    <h2>Katalog verwalten</h2>
+    <div class="card" id="catalogList"></div>
+    <button class="btn secondary" id="btnResetCatalog">Standard-Katalog wiederherstellen</button>
+
+    <h2>Daten</h2>
+    <button class="btn secondary" id="btnExport">Sicherung exportieren</button>
+    <button class="btn secondary" id="btnImport">Sicherung importieren</button>
+    <input type="file" id="importFile" accept="application/json" hidden>
+    <p class="hint" style="text-align:center;margin-top:18px">Material Transit · v1.0</p>
+  </section>
+</main>
+
+<nav>
+  <button data-view="erfassen" class="on">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+    Erfassen</button>
+  <button data-view="auftrag">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5h10M9 12h10M9 19h10M4 5h.01M4 12h.01M4 19h.01"/></svg>
+    Auftrag<span class="badge" id="badge"></span></button>
+  <button data-view="settings">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+    Einstellungen</button>
+</nav>
+
+<div class="backdrop" id="backdrop"></div>
+<div class="sheet" id="sheet"></div>
+<div class="toast" id="toast"><span id="toastText"></span><button id="toastBtn"></button></div>
+
+<script src="app.js"></script>
+</body>
+</html>
