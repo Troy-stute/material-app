@@ -1,5 +1,5 @@
 {
-  "updated": 1790171640971,
+  "updated": 1790171698131,
   "items": [
     {
       "id": "std-verlaengerung-t13",
@@ -191,6 +191,12 @@
       "id": "std-batterien-aaa",
       "cat": "Diverses",
       "name": "Batterien AAA",
+      "len": false
+    },
+    {
+      "id": "mue6095vi663c",
+      "cat": "Strom",
+      "name": "Joel",
       "len": false
     }
   ]
