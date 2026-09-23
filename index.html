@@ -79,6 +79,7 @@
   .stock small { font-size: 13px; font-weight: 500; color: var(--muted); }
   .stock.low { color: var(--danger); }
   #invFilter { margin-bottom: 4px; }
+  .mailpreview { background: #ffffff; border-radius: 10px; padding: 10px; overflow-x: auto; }
   .syncbox { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 550; }
   .syncdot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); flex: none; }
   .syncdot.ok { background: var(--ok); } .syncdot.warn { background: #e0a100; } .syncdot.err { background: var(--danger); }
@@ -176,7 +177,7 @@
       <span></span><button data-k="0">0</button><button class="plain" data-k="del" aria-label="Löschen">⌫</button>
     </div>
     <label class="switch"><input type="checkbox" id="lockRemember"> Auf diesem Gerät merken</label>
-    <div class="hint" style="opacity:.6;margin-top:14px">v2.0</div>
+    <div class="hint" style="opacity:.6;margin-top:14px">v2.1</div>
   </div>
 </div>
 <header>
@@ -254,7 +255,8 @@
       <input type="text" id="ejTemplate" placeholder="template_xxxxxxx" autocomplete="off">
       <label class="f" for="ejKey">Public Key</label>
       <input type="text" id="ejKey" placeholder="xxxxxxxxxxxxxxx" autocomplete="off">
-      <p class="hint">Im EmailJS-Template: Empfänger <code>{{to_email}}</code>, Betreff <code>{{subject}}</code>, Inhalt <code>{{message}}</code>.</p>
+      <p class="hint">Im EmailJS-Template: Empfänger <code>{{to_email}}</code>, Betreff <code>{{subject}}</code>,
+        Inhalt <code>{{{message_html}}}</code> (drei Klammern = farbige Tabelle) oder <code>{{message}}</code> für reinen Text.</p>
     </div>
 
     <h2>Sperre</h2>
@@ -265,7 +267,7 @@
     <button class="btn secondary" id="btnExport">Sicherung exportieren</button>
     <button class="btn secondary" id="btnImport">Sicherung importieren</button>
     <input type="file" id="importFile" accept="application/json" hidden>
-    <p class="hint" style="text-align:center;margin-top:18px">Material Transit · v2.0</p>
+    <p class="hint" style="text-align:center;margin-top:18px">Material Transit · v2.1</p>
   </section>
 </main>
 
@@ -288,6 +290,6 @@
 <div class="sheet" id="sheet"></div>
 <div class="toast" id="toast"><span id="toastText"></span><button id="toastBtn"></button></div>
 
-<script src="app.js?v=9"></script>
+<script src="app.js?v=10"></script>
 </body>
 </html>

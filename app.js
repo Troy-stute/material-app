@@ -273,8 +273,10 @@ function renderOrders() {
     $('#openList').innerHTML = html;
     $('#openActions').innerHTML = `
       <button class="btn" id="btnMail">Per Mail senden</button>
+      <button class="btn secondary" id="btnMailPreview">Mail-Vorschau</button>
       <button class="btn ok" id="btnAllDone">Alles als erledigt markieren</button>`;
     $('#btnMail').addEventListener('click', sendMail);
+    $('#btnMailPreview').addEventListener('click', openMailPreview);
     $('#btnAllDone').addEventListener('click', () => {
       if (!confirm(`Alle ${open.length} Positionen als erledigt markieren?`)) return;
       const now = Date.now();
@@ -548,27 +550,72 @@ function applyInvOp(items, op) {
 }
 
 // ---------- Mail ----------
+// Liefert Betreff, Text (für die Mail-App) und HTML-Tabelle (für EmailJS und die Vorschau)
 function buildMail() {
   const s = state.settings;
   const open = openOrders();
-  const subject = `Material nachfüllen – ${s.vehicle} – ${fmtDate(Date.now())}`;
-  let body = `Material nachfüllen: ${s.vehicle}\nStand: ${new Date().toLocaleString('de-CH')}\n`;
-  CATEGORIES.forEach((cat) => {
-    const rows = open.filter((o) => o.cat === cat);
-    if (!rows.length) return;
+  const now = new Date();
+  const subject = `Material nachfüllen – ${s.vehicle} – ${fmtDate(now)}`;
+  const stamp = now.toLocaleString('de-CH', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const total = open.reduce((n, o) => n + o.qty, 0);
+  const product = (o) => `${o.name}${o.len != null ? ' · ' + fmtLen(o.len) : ''}`;
+  const groups = CATEGORIES.map((cat) => [cat, open.filter((o) => o.cat === cat)]).filter(([, rows]) => rows.length);
+
+  // Text: Produkt zuerst, Anzahl am Zeilenende (Mail-Apps zeigen Proportionalschrift, Spalten liessen sich nicht ausrichten)
+  let body = `MATERIAL NACHFÜLLEN – ${s.vehicle}\nStand: ${stamp}\n`;
+  groups.forEach(([cat, rows]) => {
     body += `\n${cat.toUpperCase()}\n`;
-    rows.forEach((o) => {
-      body += `  ${o.qty}× ${o.name}${o.len != null ? ' (' + fmtLen(o.len) + ')' : ''}${o.note ? ' – ' + o.note : ''}\n`;
+    rows.forEach((o) => { body += `▪ ${product(o)}  —  ${o.qty} Stk.${o.note ? `\n    (${o.note})` : ''}\n`; });
+  });
+  body += `\n────────────\nTotal: ${open.length} Positionen · ${total} Stück\n`;
+
+  // HTML: nur Tabellen und Inline-Styles, damit es in Outlook, Gmail usw. gleich aussieht
+  const F = "font-family:Segoe UI,Arial,Helvetica,sans-serif;";
+  let rowsHtml = '';
+  groups.forEach(([cat, rows]) => {
+    rowsHtml += `<tr><td colspan="2" style="${F}background:#eaf1fc;color:#1f5fbf;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:8px 14px;border-top:1px solid #d5e2f7;">${esc(cat)}</td></tr>`;
+    rows.forEach((o, i) => {
+      rowsHtml += `<tr style="background:${i % 2 ? '#f8fafd' : '#ffffff'};">
+        <td style="${F}padding:10px 14px;border-top:1px solid #edf1f7;color:#1a1f29;font-size:14px;">${esc(product(o))}${o.note ? `<div style="color:#8a93a3;font-size:12px;margin-top:2px;">${esc(o.note)}</div>` : ''}</td>
+        <td align="right" style="${F}padding:10px 14px;border-top:1px solid #edf1f7;white-space:nowrap;">
+          <span style="display:inline-block;min-width:26px;text-align:center;background:#1f5fbf;color:#ffffff;font-weight:700;font-size:13px;border-radius:12px;padding:3px 9px;">${o.qty}</span>
+        </td></tr>`;
     });
   });
-  const total = open.reduce((n, o) => n + o.qty, 0);
-  body += `\nTotal: ${open.length} Positionen, ${total} Stück\n`;
-  return { subject, body };
+  const html = `
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;border:1px solid #dde2ea;border-radius:10px;border-collapse:separate;overflow:hidden;">
+  <tr><td colspan="2" style="${F}background:#1f5fbf;color:#ffffff;padding:16px 14px;">
+    <div style="font-size:18px;font-weight:700;">Material nachfüllen</div>
+    <div style="font-size:13px;opacity:.85;margin-top:2px;">${esc(s.vehicle)} · ${esc(stamp)}</div>
+  </td></tr>
+  <tr>
+    <td style="${F}padding:8px 14px;font-size:11px;font-weight:700;color:#6b7482;text-transform:uppercase;letter-spacing:.06em;background:#f3f5f8;">Produkt</td>
+    <td align="right" style="${F}padding:8px 14px;font-size:11px;font-weight:700;color:#6b7482;text-transform:uppercase;letter-spacing:.06em;background:#f3f5f8;">Anzahl</td>
+  </tr>
+  ${rowsHtml}
+  <tr><td style="${F}padding:12px 14px;border-top:2px solid #1f5fbf;font-size:14px;font-weight:700;color:#1a1f29;">Total · ${open.length} Positionen</td>
+    <td align="right" style="${F}padding:12px 14px;border-top:2px solid #1f5fbf;font-size:14px;font-weight:700;color:#1f5fbf;white-space:nowrap;">${total} Stk.</td></tr>
+</table>`;
+  return { subject, body, html };
+}
+
+function openMailPreview() {
+  const { subject, html } = buildMail();
+  $('#sheet').innerHTML = `
+    <div class="grab"></div>
+    <h3>Mail-Vorschau</h3>
+    <div class="hint" style="margin-bottom:12px"><b>Betreff:</b> ${esc(subject)}</div>
+    <div class="mailpreview">${html}</div>
+    <p class="hint">${state.settings.ejService ? 'So kommt die Mail per automatischem Versand an.'
+      : 'So sieht die Mail mit automatischem Versand (EmailJS) aus. Über die Mail-App kommt sie als einfacher Text an.'}</p>
+    <button class="btn secondary" id="mpClose">Schliessen</button>`;
+  $('#mpClose').addEventListener('click', closeSheet);
+  openSheet();
 }
 
 async function sendMail() {
   const s = state.settings;
-  const { subject, body } = buildMail();
+  const { subject, body, html } = buildMail();
   const auto = s.ejService && s.ejTemplate && s.ejKey;
 
   if (auto && navigator.onLine) {
@@ -580,7 +627,7 @@ async function sendMail() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           service_id: s.ejService, template_id: s.ejTemplate, user_id: s.ejKey,
-          template_params: { to_email: s.email, subject, message: body },
+          template_params: { to_email: s.email, subject, message: body, message_html: html },
         }),
       });
       if (!res.ok) throw new Error(await res.text());
