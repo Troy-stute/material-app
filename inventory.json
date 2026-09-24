@@ -1,5 +1,5 @@
 {
-  "updated": 1790259418826,
+  "updated": 1790260712996,
   "items": [
     {
       "id": "std-rj45-cat6@7.5",
@@ -43,6 +43,15 @@
       "name": "Verlängerung T13",
       "cat": "Strom",
       "len": 2,
+      "qty": 10,
+      "target": 10
+    },
+    {
+      "id": "std-rj45-cat6@1",
+      "itemId": "std-rj45-cat6",
+      "name": "LAN",
+      "cat": "Netzwerk",
+      "len": 1,
       "qty": 10,
       "target": 10
     }
