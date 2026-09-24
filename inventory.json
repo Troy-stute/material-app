@@ -1,5 +1,5 @@
 {
-  "updated": 1790259358512,
+  "updated": 1790259418826,
   "items": [
     {
       "id": "std-rj45-cat6@7.5",
@@ -36,6 +36,15 @@
       "len": 3,
       "qty": 5,
       "target": 5
+    },
+    {
+      "id": "std-verlaengerung-t13@2",
+      "itemId": "std-verlaengerung-t13",
+      "name": "Verlängerung T13",
+      "cat": "Strom",
+      "len": 2,
+      "qty": 10,
+      "target": 10
     }
   ]
 }
