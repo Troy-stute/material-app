@@ -1,5 +1,5 @@
 {
-  "updated": 1790259117511,
+  "updated": 1790259129814,
   "items": [
     {
       "id": "std-rj45-cat6@0.5",
@@ -7,7 +7,7 @@
       "name": "LAN",
       "cat": "Netzwerk",
       "len": 0.5,
-      "qty": 5,
+      "qty": 10,
       "target": 5
     }
   ]
