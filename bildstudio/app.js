@@ -29,6 +29,15 @@ function busy(text, work) {
     b.classList.remove('show'); res();
   }, 20)));
 }
+// Fortschrittsanzeige über dem Bild für längere, asynchrone Arbeiten (KI)
+function setBusy(text, frac) {
+  const b = $('#busy');
+  if (text == null) { b.classList.remove('show'); return; }
+  b.innerHTML = '';
+  b.append(text);
+  if (frac != null && frac < 1) { const s = document.createElement('small'); s.textContent = Math.round(frac * 100) + ' %'; b.firstChild.after(s); }
+  b.classList.add('show');
+}
 const hexRgb = (h) => { const n = parseInt(h.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255]; };
 const rgbHex = (r, g, b) => '#' + [r, g, b].map((v) => v.toString(16).padStart(2, '0')).join('');
 function needImage() {
@@ -147,11 +156,17 @@ palSel.innerHTML = '<option value="auto">Automatisch</option>' +
 $('#prompt').addEventListener('input', () => { $('#seed').value = ''; });
 $('#prompt').addEventListener('keydown', (e) => { if (e.key === 'Enter') generate(); });
 
-function generate() {
-  const prompt = $('#prompt').value.trim();
+const slug = (t) => t.toLowerCase().replace(/[^a-z0-9äöü]+/g, '-').replace(/^-|-$/g, '').slice(0, 60) || 'bild';
+function currentSeed(prompt) {
   let seed = parseInt($('#seed').value, 10);
   if (!(seed >= 0)) seed = prompt ? Gen.hashStr(prompt) % 1e6 : (Math.random() * 1e6) | 0;
   $('#seed').value = seed;
+  return seed;
+}
+const generate = () => (genMode === 'ki' ? generateKi() : generateMath());
+
+function generateMath() {
+  const prompt = $('#prompt').value.trim(), seed = currentSeed(prompt);
 
   const r = Gen.rng(seed ^ 0x9e3779b9), hint = Gen.interpret(prompt);
   const pick = (arr) => arr[(r() * arr.length) | 0];
@@ -163,13 +178,127 @@ function generate() {
   return busy('Bild wird erzeugt…', () => {
     canvas.width = w; canvas.height = h;
     Gen.draw(ctx, { motif, palette, seed });
-    fileBase = (prompt || Gen.MOTIFS[motif].label).toLowerCase().replace(/[^a-z0-9äöü]+/g, '-').replace(/^-|-$/g, '') || 'bild';
+    fileBase = slug(prompt || Gen.MOTIFS[motif].label);
     commit();
     const palLabel = palette === 'zufall' ? 'Zufallsfarben' : Gen.PALETTES[palette].label;
     $('#genInfo').textContent = `${Gen.MOTIFS[motif].label} · ${palLabel} · Seed ${seed} · ${w} × ${h}`;
   });
 }
 $('#genBtn').onclick = generate;
+
+// ---------- Umschalter Mathematisch / KI ----------
+let genMode = KI.store.get('mode', 'math') === 'ki' ? 'ki' : 'math';
+const kiEngine = $('#kiEngine');
+kiEngine.value = KI.store.get('kiEngine', 'browser') === 'server' ? 'server' : 'browser';
+$('#kiUrl').value = KI.store.get('kiUrl', $('#kiUrl').value);
+$('#kiUrl').addEventListener('change', () => KI.store.set('kiUrl', $('#kiUrl').value.trim()));
+function setMode(m) {
+  genMode = m;
+  KI.store.set('mode', m);
+  const ki = m === 'ki', browser = kiEngine.value === 'browser';
+  $$('#modeSeg button').forEach((b) => b.classList.toggle('on', b.dataset.mode === m));
+  $('#kiOpts').hidden = !ki;
+  $$('[data-math]').forEach((el) => { el.hidden = ki; });
+  $('#sizeLabel').hidden = ki && browser; // SD-Turbo rechnet immer in 512 × 512
+  $('#kiBrowser').hidden = !browser;
+  $('#kiServer').hidden = browser;
+  $('#promptLabel').textContent = ki ? 'Was soll auf dem Bild sein?' : 'Stichworte (optional)';
+  $('#prompt').placeholder = ki ? 'z. B. eine Katze mit Hut im Wald, Aquarell' : 'z. B. Berge im Sonnenuntergang';
+  $('#genInfo').textContent = ki
+    ? (browser ? 'Die KI rechnet direkt auf deiner Grafikkarte – nach dem einmaligen Download ganz ohne Internet.'
+      : 'Nutzt deinen eigenen Stable-Diffusion-Server (z. B. auf dem PC im gleichen WLAN).')
+    : 'Stichworte wählen Motiv und Farben aus. Gleiche Stichworte und gleicher Seed ergeben immer dasselbe Bild.';
+  if (ki && browser) refreshKiStatus();
+}
+$$('#modeSeg button').forEach((b) => { b.onclick = () => setMode(b.dataset.mode); });
+kiEngine.onchange = () => { KI.store.set('kiEngine', kiEngine.value); setMode('ki'); };
+
+function kiProgress(frac) {
+  const p = $('#kiProg');
+  p.hidden = frac == null;
+  if (frac != null) p.firstElementChild.style.width = Math.round(frac * 100) + '%';
+}
+async function refreshKiStatus() {
+  const st = $('#kiStatus'), dl = $('#kiDownload'), del = $('#kiDelete');
+  const problem = await KI.checkDevice();
+  const cached = await KI.cachedState().catch(() => ({ complete: false, count: 0 }));
+  del.hidden = !cached.count;
+  if (problem) {
+    st.textContent = '⚠️ ' + problem + ' Tipp: «Eigener KI-Server» oder der Modus «Mathematisch» funktionieren trotzdem.';
+    dl.hidden = true;
+    return;
+  }
+  dl.hidden = cached.complete;
+  dl.textContent = `Modell herunterladen (~${(KI.TOTAL_MB / 1000).toFixed(1).replace('.', ',')} GB, einmalig)`;
+  st.textContent = KI.isLoaded() ? '✅ KI ist bereit.'
+    : cached.complete ? '✅ Modell ist gespeichert – funktioniert offline. Der erste Start dauert ein paar Sekunden.'
+      : 'Für KI im Browser wird das Modell SD-Turbo einmalig heruntergeladen (WLAN empfohlen). Danach läuft alles offline.';
+}
+async function prepareKi() {
+  if (kiBusy) return;
+  const b = $('#kiDownload');
+  b.disabled = true; lockGen(true);
+  try {
+    await KI.prepare((msg, frac) => { $('#kiStatus').textContent = msg; kiProgress(frac); setBusy(msg, frac); });
+    toast('KI-Modell bereit');
+  } catch (e) {
+    console.error(e); toast(e.message);
+  } finally {
+    b.disabled = false; lockGen(false); kiProgress(null); setBusy(null); refreshKiStatus();
+  }
+}
+$('#kiDownload').onclick = prepareKi;
+$('#kiDelete').onclick = async () => {
+  if (!confirm('Gespeichertes KI-Modell löschen? Es kann später erneut heruntergeladen werden.')) return;
+  await KI.deleteModel();
+  toast('KI-Modell gelöscht');
+  refreshKiStatus();
+};
+
+let kiBusy = false; // die KI darf nur einen Auftrag gleichzeitig rechnen
+function lockGen(on) {
+  kiBusy = on;
+  $('#genBtn').disabled = $('#varBtn').disabled = on;
+}
+async function generateKi() {
+  if (kiBusy) return;
+  const prompt = $('#prompt').value.trim();
+  if (!prompt) { toast('Beschreibe zuerst, was auf dem Bild sein soll'); $('#prompt').focus(); return; }
+  const seed = currentSeed(prompt), browser = kiEngine.value === 'browser';
+  const text = $('#kiTranslate').checked ? KI.translate(prompt) : prompt;
+  if (browser && !KI.isLoaded()) {
+    const problem = await KI.checkDevice();
+    if (problem) { toast(problem); refreshKiStatus(); return; }
+    const cached = await KI.cachedState();
+    if (!cached.complete && !confirm(`Das KI-Modell (~${(KI.TOTAL_MB / 1000).toFixed(1).replace('.', ',')} GB) wird jetzt einmalig heruntergeladen. Fortfahren?`)) return;
+  }
+  endPreview(true); clearCrop();
+  lockGen(true);
+  setBusy('KI startet…');
+  try {
+    const t0 = performance.now();
+    let src;
+    if (browser) {
+      src = await KI.generate(text, seed, (msg, frac) => { setBusy(msg, frac); kiProgress(frac < 1 ? frac : null); });
+    } else {
+      const [width, height] = $('#size').value.split('x').map(Number);
+      src = await KI.serverGenerate({ url: $('#kiUrl').value, prompt: text, negative: $('#kiNeg').value, seed, width, height, steps: +$('#kiSteps').value || 20 });
+    }
+    setSize(src.width, src.height);
+    ctx.clearRect(0, 0, src.width, src.height);
+    if (src instanceof ImageData) ctx.putImageData(src, 0, 0); else ctx.drawImage(src, 0, 0);
+    fileBase = slug(prompt);
+    commit();
+    const secs = ((performance.now() - t0) / 1000).toFixed(1);
+    $('#genInfo').textContent = `KI (${browser ? 'SD-Turbo' : 'Server'}) · Seed ${seed} · ${src.width} × ${src.height} · ${secs} s` +
+      (text !== prompt ? ` · verstanden als: «${text}»` : '');
+  } catch (e) {
+    console.error(e); toast(e.message);
+  } finally {
+    setBusy(null); kiProgress(null); lockGen(false);
+    if (browser) refreshKiStatus();
+  }
+}
 $('#varBtn').onclick = () => { $('#seed').value = (Math.random() * 1e6) | 0; generate(); };
 
 $('#blankBtn').onclick = () => {
@@ -621,4 +750,5 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
 }
 
+setMode(genMode);
 updateUi();

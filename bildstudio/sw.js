@@ -1,6 +1,6 @@
 // Bildstudio offline: alle Dateien liegen nach dem ersten Aufruf im Cache
-const CACHE = 'bildstudio-v1';
-const FILES = ['./', 'index.html', 'gen.js', 'filters.js', 'app.js', 'manifest.json', 'icon.svg', 'icon-192.png', 'icon-512.png'];
+const CACHE = 'bildstudio-v2';
+const FILES = ['./', 'index.html', 'gen.js', 'filters.js', 'ki.js', 'ki/clip-merges.txt', 'app.js', 'manifest.json', 'icon.svg', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE)
