@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="de-CH">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#5b3cc4">
+<title>Bildstudio</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  :root {
+    --bg: #eef0f4; --card: #ffffff; --text: #1a1f29; --muted: #6b7482; --line: #dde2ea;
+    --accent: #5b3cc4; --accent-soft: #ece7fb; --accent-text: #ffffff; --stage: #dfe2e8;
+    --shadow: 0 1px 3px rgba(20,30,50,.08), 0 4px 14px rgba(20,30,50,.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12151b; --card: #1c2029; --text: #e8ebf0; --muted: #98a1ae; --line: #2c323d;
+      --accent: #9b85ff; --accent-soft: #2a2347; --accent-text: #120d24; --stage: #0c0e12;
+      --shadow: 0 1px 3px rgba(0,0,0,.4);
+    }
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+    font: 15px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  body { display: grid; height: 100dvh; overflow: hidden; grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr) auto auto; grid-template-areas: "head" "stage" "panel" "tabs"; }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  button:disabled { opacity: .4; cursor: default; }
+
+  header { grid-area: head; display: flex; align-items: center; gap: 6px; background: var(--accent); color: #fff;
+    padding: calc(8px + env(safe-area-inset-top)) 10px 8px; }
+  header h1 { font-size: 17px; margin: 0 auto 0 4px; font-weight: 650; white-space: nowrap; }
+  header h1 small { font-weight: 400; opacity: .8; font-size: 12px; margin-left: 6px; }
+  header button { background: rgba(255,255,255,.16); border: 0; color: #fff; border-radius: 9px;
+    padding: 7px 11px; font-size: 14px; font-weight: 550; }
+  header button.icon { font-size: 18px; padding: 4px 10px; line-height: 1.2; }
+
+  #stage { grid-area: stage; position: relative; display: grid; place-items: center; overflow: hidden; background: var(--stage); }
+  #wrap { position: relative; display: none; overflow: hidden; touch-action: none; box-shadow: 0 2px 16px rgba(0,0,0,.25);
+    background: repeating-conic-gradient(#c9ccd2 0 25%, #fff 0 50%) 0 0 / 16px 16px; }
+  #wrap.show { display: block; }
+  #wrap canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  #overlay { pointer-events: none; }
+  #wrap[data-tool="paint"], #wrap[data-tool="crop"] { cursor: crosshair; }
+  #wrap[data-tool="text"] { cursor: text; }
+  #crop { position: absolute; display: none; pointer-events: none; border: 2px dashed #fff;
+    box-shadow: 0 0 0 9999px rgba(0,0,0,.5), 0 0 0 1px rgba(0,0,0,.6) inset; }
+  #empty { text-align: center; color: var(--muted); padding: 24px; max-width: 420px; }
+  #empty b { display: block; color: var(--text); font-size: 18px; margin-bottom: 6px; }
+  #empty .btns { justify-content: center; margin-top: 14px; }
+  #busy { position: absolute; inset: 0; display: none; place-items: center; background: rgba(0,0,0,.35); color: #fff; font-weight: 600; }
+  #busy.show { display: grid; }
+
+  #panel { grid-area: panel; background: var(--card); border-top: 1px solid var(--line); max-height: 42dvh; overflow-y: auto; }
+  .pane { display: none; padding: 12px 14px 16px; }
+  .pane.active { display: block; }
+  .pane h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 14px 0 6px; font-weight: 600; }
+  .pane h3:first-child { margin-top: 0; }
+  label { display: block; font-size: 13px; color: var(--muted); margin: 8px 0 0; }
+  label > input:not([type=checkbox]):not([type=range]):not([type=color]), label > select, label > textarea {
+    display: block; width: 100%; margin-top: 3px; padding: 8px 10px; border: 1px solid var(--line);
+    border-radius: 9px; background: var(--bg); color: var(--text); }
+  textarea { resize: vertical; min-height: 54px; }
+  .two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 10px; }
+  .slider { display: grid; grid-template-columns: 96px 1fr 44px; align-items: center; gap: 8px; margin-top: 6px; font-size: 13px; color: var(--muted); }
+  .slider output { text-align: right; font-variant-numeric: tabular-nums; color: var(--text); }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  input[type=checkbox] { accent-color: var(--accent); width: 17px; height: 17px; vertical-align: -3px; margin-right: 6px; }
+  input[type=color] { width: 44px; height: 36px; border: 1px solid var(--line); border-radius: 9px; padding: 2px; background: var(--bg); }
+  .check { display: inline-flex; align-items: center; color: var(--text); margin-right: 14px; }
+
+  .btns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; align-items: center; }
+  .btn { border: 1px solid var(--line); background: var(--bg); border-radius: 10px; padding: 9px 14px; font-weight: 550; }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+  .btn.small { padding: 6px 11px; font-size: 13px; }
+  .seg { display: flex; flex-wrap: wrap; gap: 6px; }
+  .seg button { border: 1px solid var(--line); background: var(--bg); border-radius: 999px; padding: 6px 13px; font-size: 13px; font-weight: 550; }
+  .seg button.on { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 6px; }
+  .grid button { border: 1px solid var(--line); background: var(--bg); border-radius: 10px; padding: 10px 6px; font-size: 13px; font-weight: 550; }
+  .grid button.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+  .swatches { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .swatches button { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--line); padding: 0; }
+  .hint { font-size: 13px; color: var(--muted); margin: 10px 0 0; }
+  .row { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+  .row label { flex: 1; min-width: 90px; }
+  [hidden] { display: none !important; }
+  .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 4px; background: var(--bg); border: 1px solid var(--line); border-radius: 12px; }
+  .modes button { border: 0; background: none; border-radius: 9px; padding: 8px 6px; display: flex; flex-direction: column; align-items: center; gap: 1px; }
+  .modes button b { font-size: 14px; font-weight: 650; }
+  .modes button small { font-size: 11px; color: var(--muted); }
+  .modes button.on { background: var(--accent); color: var(--accent-text); }
+  .modes button.on small { color: inherit; opacity: .85; }
+  .progress { height: 8px; border-radius: 999px; background: var(--line); overflow: hidden; margin-top: 8px; }
+  .progress div { height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+  #busy small { display: block; font-weight: 400; opacity: .85; margin-top: 4px; }
+  @media (max-width: 480px) {
+    header { gap: 4px; padding-left: 8px; padding-right: 8px; }
+    header h1 small { display: none; }
+    header button { padding: 7px 9px; }
+    .slider { grid-template-columns: 82px 1fr 44px; }
+  }
+
+  nav { grid-area: tabs; display: flex; background: var(--card); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom); }
+  nav button { flex: 1; border: 0; background: none; padding: 7px 2px 6px; font-size: 11px; font-weight: 550; color: var(--muted);
+    display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  nav button svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  nav button.on { color: var(--accent); }
+
+  #toast { position: fixed; left: 50%; bottom: 90px; transform: translateX(-50%); background: #222; color: #fff; padding: 9px 16px;
+    border-radius: 999px; font-size: 14px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 20; max-width: 90vw; text-align: center; }
+  #toast.show { opacity: 1; }
+
+  dialog { border: 0; border-radius: 16px; padding: 18px; width: min(380px, 92vw); background: var(--card); color: var(--text); box-shadow: var(--shadow); }
+  dialog::backdrop { background: rgba(0,0,0,.45); }
+  dialog h2 { margin: 0 0 4px; font-size: 18px; }
+
+  @media (min-width: 900px) {
+    body { grid-template-columns: minmax(0, 1fr) 360px; grid-template-rows: auto minmax(0, 1fr) auto;
+      grid-template-areas: "head head" "stage panel" "tabs panel"; }
+    #panel { max-height: none; border-top: 0; border-left: 1px solid var(--line); }
+    nav { border-top: 1px solid var(--line); }
+    #toast { bottom: 80px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Bildstudio<small id="dims"></small></h1>
+  <button class="icon" id="undoBtn" title="Rückgängig (Strg+Z)" aria-label="Rückgängig">↶</button>
+  <button class="icon" id="redoBtn" title="Wiederholen (Strg+Y)" aria-label="Wiederholen">↷</button>
+  <button id="openBtn" title="Bild öffnen (Strg+O)">Öffnen</button>
+  <button id="saveBtn" title="Speichern (Strg+S)">Speichern</button>
+</header>
+
+<div id="stage">
+  <div id="wrap"><canvas id="doc"></canvas><canvas id="overlay"></canvas><div id="crop"></div></div>
+  <div id="empty">
+    <b>Noch kein Bild</b>
+    Erzeuge ein neues Bild oder öffne ein Foto zum Bearbeiten. Alles läuft direkt auf diesem Gerät – ganz ohne Internet.
+    <div class="btns"><button class="btn primary" data-act="gen">Bild erzeugen</button><button class="btn" data-act="open">Foto öffnen</button></div>
+  </div>
+  <div id="busy">Einen Moment…</div>
+</div>
+
+<section id="panel">
+  <div class="pane active" data-pane="gen">
+    <h3>Neues Bild erzeugen</h3>
+    <div class="modes" id="modeSeg">
+      <button data-mode="math" class="on"><b>🧮 Mathematisch</b><small>sofort, jedes Gerät</small></button>
+      <button data-mode="ki"><b>🤖 KI</b><small>Beschreibung → Bild</small></button>
+    </div>
+    <label><span id="promptLabel">Stichworte (optional)</span>
+      <input id="prompt" placeholder="z. B. Berge im Sonnenuntergang" autocomplete="off">
+    </label>
+    <div id="kiOpts" hidden>
+      <label>KI-Motor
+        <select id="kiEngine">
+          <option value="browser">Im Browser – SD-Turbo (WebGPU, offline)</option>
+          <option value="server">Eigener KI-Server (Automatic1111 / Forge)</option>
+        </select>
+      </label>
+      <div id="kiBrowser">
+        <p class="hint" id="kiStatus">Prüfe Gerät…</p>
+        <div class="progress" id="kiProg" hidden><div></div></div>
+        <div class="btns">
+          <button class="btn small" id="kiDownload">Modell herunterladen</button>
+          <button class="btn small" id="kiDelete" hidden>Modell löschen</button>
+        </div>
+      </div>
+      <div id="kiServer" hidden>
+        <label>Server-Adresse <input id="kiUrl" value="http://127.0.0.1:7860" autocomplete="off"></label>
+        <div class="two">
+          <label>Schritte <input id="kiSteps" type="number" min="1" max="150" value="20"></label>
+          <label>Nicht im Bild <input id="kiNeg" placeholder="z. B. blurry, text" autocomplete="off"></label>
+        </div>
+      </div>
+      <label class="check" style="margin-top:10px"><input type="checkbox" id="kiTranslate" checked>Deutsch automatisch ins Englische übersetzen</label>
+    </div>
+    <div class="two">
+      <label data-math>Motiv <select id="motif"></select></label>
+      <label data-math>Farben <select id="palette"></select></label>
+      <label id="sizeLabel">Grösse
+        <select id="size">
+          <option value="1024x1024">1024 × 1024 (Quadrat)</option>
+          <option value="1920x1080">1920 × 1080 (Quer)</option>
+          <option value="1080x1920">1080 × 1920 (Hoch)</option>
+          <option value="2048x2048">2048 × 2048 (Gross)</option>
+          <option value="512x512">512 × 512 (Klein)</option>
+        </select>
+      </label>
+      <label>Seed <input id="seed" type="number" min="0" placeholder="zufällig"></label>
+    </div>
+    <div class="btns">
+      <button class="btn primary" id="genBtn">Erzeugen</button>
+      <button class="btn" id="varBtn">🎲 Neue Variante</button>
+    </div>
+    <p class="hint" id="genInfo">Stichworte wählen Motiv und Farben aus. Gleiche Stichworte und gleicher Seed ergeben immer dasselbe Bild.</p>
+    <h3>Leere Fläche</h3>
+    <div class="row">
+      <input type="color" id="blankColor" value="#ffffff" aria-label="Hintergrundfarbe">
+      <label class="check"><input type="checkbox" id="blankTransparent">Transparent</label>
+      <button class="btn small" id="blankBtn">Leere Fläche anlegen</button>
+    </div>
+  </div>
+
+  <div class="pane" data-pane="adjust">
+    <h3>Anpassen</h3>
+    <div id="sliders"></div>
+    <div class="btns">
+      <button class="btn primary" id="adjApply">Übernehmen</button>
+      <button class="btn" id="adjReset">Zurücksetzen</button>
+      <button class="btn" id="autoBtn">✨ Auto-Kontrast</button>
+    </div>
+  </div>
+
+  <div class="pane" data-pane="filter">
+    <h3>Filter</h3>
+    <div class="grid" id="filterGrid"></div>
+    <div id="filterCtl" hidden>
+      <div class="slider"><span id="fLabel">Stärke</span><input type="range" id="fVal"><output id="fOut"></output></div>
+      <div class="btns">
+        <button class="btn primary" id="fApply">Übernehmen</button>
+        <button class="btn" id="fCancel">Verwerfen</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="pane" data-pane="transform">
+    <h3>Drehen &amp; Spiegeln</h3>
+    <div class="btns" style="margin-top:0">
+      <button class="btn small" data-rot="-1">⟲ 90° links</button>
+      <button class="btn small" data-rot="1">⟳ 90° rechts</button>
+      <button class="btn small" data-flip="h">⇋ Horizontal</button>
+      <button class="btn small" data-flip="v">⇵ Vertikal</button>
+    </div>
+    <h3>Zuschneiden</h3>
+    <div class="seg" id="ratios">
+      <button data-r="0" class="on">Frei</button><button data-r="1">1:1</button><button data-r="1.3333">4:3</button>
+      <button data-r="1.7778">16:9</button><button data-r="0.5625">9:16</button>
+    </div>
+    <p class="hint" style="margin-top:8px">Rahmen direkt im Bild aufziehen.</p>
+    <div class="btns">
+      <button class="btn primary" id="cropApply" disabled>Zuschneiden</button>
+      <button class="btn" id="cropClear" disabled>Auswahl aufheben</button>
+    </div>
+    <h3>Grösse ändern</h3>
+    <div class="row">
+      <label>Breite <input type="number" id="rw" min="1" max="8192"></label>
+      <label>Höhe <input type="number" id="rh" min="1" max="8192"></label>
+      <button class="btn small" id="resizeBtn">Anwenden</button>
+    </div>
+    <label class="check" style="margin-top:8px"><input type="checkbox" id="rlock" checked>Seitenverhältnis beibehalten</label>
+  </div>
+
+  <div class="pane" data-pane="paint">
+    <h3>Werkzeug</h3>
+    <div class="seg" id="tools">
+      <button data-tool="brush" class="on">🖌 Pinsel</button><button data-tool="eraser">Radierer</button>
+      <button data-tool="fill">🪣 Füllen</button><button data-tool="picker">Pipette</button>
+    </div>
+    <h3>Farbe</h3>
+    <div class="swatches" id="swatches"><input type="color" id="pColor" value="#e8443a" aria-label="Farbe"></div>
+    <div class="slider" id="sizeRow"><span>Grösse</span><input type="range" id="pSize" min="1" max="300" value="24"><output></output></div>
+    <div class="slider"><span>Deckkraft</span><input type="range" id="pAlpha" min="5" max="100" value="100"><output></output></div>
+    <div class="slider" id="tolRow" hidden><span>Toleranz</span><input type="range" id="pTol" min="0" max="100" value="20"><output></output></div>
+  </div>
+
+  <div class="pane" data-pane="text">
+    <h3>Text einfügen</h3>
+    <label>Text <textarea id="txt" placeholder="Dein Text"></textarea></label>
+    <div class="two">
+      <label>Schrift
+        <select id="tFont">
+          <option value="system-ui, sans-serif">Modern</option>
+          <option value="Georgia, 'Times New Roman', serif">Klassisch</option>
+          <option value="Impact, 'Arial Black', sans-serif">Plakat</option>
+          <option value="'Comic Sans MS', 'Segoe Print', cursive">Handschrift</option>
+          <option value="ui-monospace, Menlo, Consolas, monospace">Schreibmaschine</option>
+        </select>
+      </label>
+      <label>Farbe <input type="color" id="tColor" value="#ffffff" style="display:block;margin-top:3px"></label>
+    </div>
+    <div class="slider"><span>Grösse (%)</span><input type="range" id="tSize" min="1" max="40" value="8"><output></output></div>
+    <div style="margin-top:10px">
+      <label class="check"><input type="checkbox" id="tBold" checked>Fett</label>
+      <label class="check"><input type="checkbox" id="tOutline" checked>Kontur</label>
+      <label class="check"><input type="checkbox" id="tShadow">Schatten</label>
+    </div>
+    <p class="hint">Tippe ins Bild, um den Text an dieser Stelle zu platzieren.</p>
+  </div>
+</section>
+
+<nav id="tabs">
+  <button data-tab="gen" class="on"><svg viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 15l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7z"/></svg>Erzeugen</button>
+  <button data-tab="adjust"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="2.3" fill="var(--card)"/><circle cx="15" cy="17" r="2.3" fill="var(--card)"/></svg>Anpassen</button>
+  <button data-tab="filter"><svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="5"/><circle cx="9" cy="15" r="5"/><circle cx="15" cy="15" r="5"/></svg>Filter</button>
+  <button data-tab="transform"><svg viewBox="0 0 24 24"><path d="M6 2v16h16M2 6h16v16"/></svg>Zuschnitt</button>
+  <button data-tab="paint"><svg viewBox="0 0 24 24"><path d="M18 3l3 3-10 10-3-3z"/><path d="M8 13c-2 0-3 1.5-3.2 3.2C4.6 18 4 19.5 3 21c3 0 6-1 7-3 .6-1.3.3-2.7-2-5z"/></svg>Malen</button>
+  <button data-tab="text"><svg viewBox="0 0 24 24"><path d="M5 7V5h14v2M12 5v14M9 19h6"/></svg>Text</button>
+</nav>
+
+<input type="file" id="file" accept="image/*" hidden>
+<div id="toast"></div>
+
+<dialog id="saveDlg">
+  <h2>Bild speichern</h2>
+  <label>Dateiname <input id="fname" autocomplete="off"></label>
+  <label>Format
+    <select id="fmt">
+      <option value="image/png">PNG – verlustfrei, mit Transparenz</option>
+      <option value="image/jpeg">JPEG – kleine Datei, für Fotos</option>
+      <option value="image/webp">WebP – klein, modern</option>
+    </select>
+  </label>
+  <div class="slider" id="qualRow" hidden><span>Qualität</span><input type="range" id="qual" min="40" max="100" value="90"><output></output></div>
+  <div class="btns" style="justify-content:flex-end">
+    <button class="btn" id="dlgCancel">Abbrechen</button>
+    <button class="btn" id="shareBtn" hidden>Teilen</button>
+    <button class="btn primary" id="dlBtn">Herunterladen</button>
+  </div>
+</dialog>
+
+<script src="gen.js"></script>
+<script src="filters.js"></script>
+<script src="ki.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
