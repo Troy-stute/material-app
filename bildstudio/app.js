@@ -18,7 +18,7 @@ let toastTimer;
 function toast(msg) {
   const t = $('#toast');
   t.textContent = msg; t.classList.add('show');
-  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2400);
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), Math.max(2400, msg.length * 70));
 }
 // Schwere Arbeit erst nach dem nächsten Bildaufbau, damit «Einen Moment…» sichtbar wird
 function busy(text, work) {
@@ -224,7 +224,7 @@ async function refreshKiStatus() {
   const cached = await KI.cachedState().catch(() => ({ complete: false, count: 0 }));
   del.hidden = !cached.count;
   if (problem) {
-    st.textContent = '⚠️ ' + problem + ' Tipp: «Eigener KI-Server» oder der Modus «Mathematisch» funktionieren trotzdem.';
+    st.textContent = '⚠️ ' + problem + ' Auf diesem Gerät geht KI deshalb nicht direkt im Browser. Der Modus «Mathematisch» funktioniert aber immer.';
     dl.hidden = true;
     return;
   }
