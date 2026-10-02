@@ -56,6 +56,18 @@ mit WebGPU und float16 sowie genügend Arbeitsspeicher (8 GB+ empfohlen). Die Ap
 wenn es nicht geht. Funktioniert nicht, wenn die Datei per Doppelklick geöffnet ist – dafür die Web-App nutzen.
 SD-Turbo steht unter der «Stability AI Community License» (nichtkommerzielle Nutzung frei).
 
+### Extras
+
+- **4 Varianten:** Häkchen «4 Varianten erzeugen» – die App rechnet vier Bilder (Seed, Seed+1 …) und
+  zeigt sie zur Auswahl. Funktioniert in beiden Modi.
+- **Bild-zu-Bild:** Häkchen «Aktuelles Bild als Vorlage» – ein Foto oder Bild wird nach der Beschreibung
+  umgestaltet; der Regler «Veränderung» bestimmt, wie frei. Weil das Web-Modell keinen Bild-Encoder
+  mitbringt, misst sich die App beim ersten Mal kurz selbst ein (6 Testbilder, einmalig).
+  Die Vorlage gibt vor allem Farben und Aufbau vor.
+- **KI-Hochskalieren:** im Reiter «Zuschnitt» (2× / 4×) oder automatisch nach dem Erzeugen.
+  Nutzt ein kleines Super-Resolution-Modell (ESRGAN/RDN von UpscalerJS, MIT, 2,8 MB) mit TensorFlow.js –
+  in der App enthalten, läuft offline und auf jedem Gerät, mit Grafikkarte deutlich schneller.
+
 ### Eigener KI-Server (optional)
 
 Wer auf dem PC bereits **Automatic1111**, **Forge** oder **SD.Next** hat, kann diesen als Motor wählen –

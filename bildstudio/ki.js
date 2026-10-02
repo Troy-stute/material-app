@@ -252,31 +252,47 @@ const KI = (() => {
   }
   const first = (out, name) => out[name] || out[Object.keys(out)[0]];
 
-  // Erzeugt ein 512×512-Bild; gibt ImageData zurück
-  async function generate(prompt, seed, onStatus = () => {}) {
-    const S = await prepare(onStatus);
-    onStatus('KI malt…', 1);
+  // Rauschplan von Stable Diffusion 2.x («scaled_linear»): Rauschstärke sigma je Zeitschritt
+  const SIGMAS = (() => {
+    const b0 = Math.sqrt(0.00085), b1 = Math.sqrt(0.012), out = new Float64Array(1000);
+    let a = 1;
+    for (let i = 0; i < 1000; i++) { a *= 1 - (b0 + (b1 - b0) * i / 999) ** 2; out[i] = Math.sqrt((1 - a) / a); }
+    return out;
+  })();
+  const LAT = 4 * 64 * 64;
+
+  // Normalverteiltes Rauschen aus dem Seed (Box-Muller)
+  function randn(seed, scale) {
+    const r = Gen.rng(seed), z = new Float32Array(LAT);
+    for (let i = 0; i < LAT; i += 2) {
+      const u = Math.max(r(), 1e-12), v = r(), rad = Math.sqrt(-2 * Math.log(u)) * scale;
+      z[i] = rad * Math.cos(2 * Math.PI * v);
+      z[i + 1] = rad * Math.sin(2 * Math.PI * v);
+    }
+    return z;
+  }
+
+  async function encodeText(S, prompt) {
     const ids = (await getTokenizer()).encode(prompt);
     const te = await S.text_encoder.run({ input_ids: tensor(S.text_encoder, 'input_ids', ids, [1, 77], 'int32') });
-    const hidden = first(te, 'last_hidden_state');
+    return first(te, 'last_hidden_state');
+  }
 
-    // Startrauschen aus dem Seed (Box-Muller)
-    const r = Gen.rng(seed), n = 4 * 64 * 64, latent = new Float32Array(n);
-    for (let i = 0; i < n; i += 2) {
-      const u = Math.max(r(), 1e-12), v = r(), rad = Math.sqrt(-2 * Math.log(u));
-      latent[i] = rad * Math.cos(2 * Math.PI * v) * SIGMA;
-      latent[i + 1] = rad * Math.sin(2 * Math.PI * v) * SIGMA;
-    }
-    const k = 1 / Math.sqrt(SIGMA * SIGMA + 1), scaled = latent.map((x) => x * k);
+  // Ein Schritt: verrauschtes Latent bei Zeitschritt t → geschätztes sauberes Latent
+  async function denoise(S, hidden, noisy, t) {
+    const sigma = SIGMAS[t], k = 1 / Math.sqrt(sigma * sigma + 1);
     const un = await S.unet.run({
-      sample: tensor(S.unet, 'sample', scaled, [1, 4, 64, 64], 'float16'),
-      timestep: tensor(S.unet, 'timestep', [999], [1], 'float16'),
+      sample: tensor(S.unet, 'sample', noisy.map((x) => x * k), [1, 4, 64, 64], 'float16'),
+      timestep: tensor(S.unet, 'timestep', [t], [1], 'float16'),
       encoder_hidden_states: hidden,
     });
-    const eps = toF32(first(un, 'out_sample').data);
-    // Ein Euler-Schritt bis zum Ende, dann für den VAE skalieren
-    const lat = new Float32Array(n);
-    for (let i = 0; i < n; i++) lat[i] = (latent[i] - SIGMA * eps[i]) / VAE_SCALE;
+    const eps = toF32(first(un, 'out_sample').data), z = new Float32Array(LAT);
+    for (let i = 0; i < LAT; i++) z[i] = noisy[i] - sigma * eps[i];
+    return z;
+  }
+
+  async function decode(S, z) {
+    const lat = z.map((x) => x / VAE_SCALE);
     const vae = await S.vae_decoder.run({ latent_sample: tensor(S.vae_decoder, 'latent_sample', lat, [1, 4, 64, 64], 'float32') });
     const outT = first(vae, 'sample'), px = toF32(outT.data);
     const H = outT.dims[2], W = outT.dims[3], plane = W * H, img = new ImageData(W, H), d = img.data;
@@ -289,22 +305,126 @@ const KI = (() => {
     return img;
   }
 
+  async function text2img(S, prompt, seed) {
+    const hidden = await encodeText(S, prompt);
+    const z = await denoise(S, hidden, randn(seed, SIGMAS[999]), 999);
+    return { img: await decode(S, z), z };
+  }
+
+  // Erzeugt ein 512×512-Bild aus Text; gibt ImageData zurück
+  async function generate(prompt, seed, onStatus = () => {}) {
+    const S = await prepare(onStatus);
+    onStatus('KI malt…', 1);
+    return (await text2img(S, prompt, seed)).img;
+  }
+
+  // ---------- Bild → Latent ----------
+  // Das Web-Modell enthält keinen VAE-Encoder. Ersatz: eine lineare Umrechnung von 8×8-Pixelblöcken
+  // (Mittelwerte der vier 4×4-Viertel, 12 Werte + 1) auf die 4 Latent-Kanäle. Sie wird einmalig am
+  // echten Decoder eingemessen: ein paar Testbilder erzeugen und Latent ↔ Pixel per Regression verbinden.
+  const ENC_VERSION = 1, NF = 13;
+  function blockFeatures(img) {
+    const d = img.data, F = new Float32Array(64 * 64 * NF);
+    for (let by = 0; by < 64; by++) {
+      for (let bx = 0; bx < 64; bx++) {
+        const o = (by * 64 + bx) * NF;
+        for (let q = 0; q < 4; q++) {
+          const qx = bx * 8 + (q & 1) * 4, qy = by * 8 + (q >> 1) * 4;
+          let r = 0, g = 0, b = 0;
+          for (let y = qy; y < qy + 4; y++) for (let x = qx; x < qx + 4; x++) {
+            const i = (y * 512 + x) * 4;
+            r += d[i]; g += d[i + 1]; b += d[i + 2];
+          }
+          F[o + q * 3] = r / 2040 - 1; F[o + q * 3 + 1] = g / 2040 - 1; F[o + q * 3 + 2] = b / 2040 - 1;
+        }
+        F[o + 12] = 1;
+      }
+    }
+    return F;
+  }
+  // Kleines Gleichungssystem lösen (Gauss mit Pivotsuche), A: n×n, B: n×m
+  function solve(A, B, n, m) {
+    for (let c = 0; c < n; c++) {
+      let p = c;
+      for (let r = c + 1; r < n; r++) if (Math.abs(A[r * n + c]) > Math.abs(A[p * n + c])) p = r;
+      for (let k = 0; k < n; k++) [A[c * n + k], A[p * n + k]] = [A[p * n + k], A[c * n + k]];
+      for (let k = 0; k < m; k++) [B[c * m + k], B[p * m + k]] = [B[p * m + k], B[c * m + k]];
+      for (let r = 0; r < n; r++) {
+        if (r === c) continue;
+        const f = A[r * n + c] / A[c * n + c];
+        for (let k = c; k < n; k++) A[r * n + k] -= f * A[c * n + k];
+        for (let k = 0; k < m; k++) B[r * m + k] -= f * B[c * m + k];
+      }
+    }
+    for (let r = 0; r < n; r++) for (let k = 0; k < m; k++) B[r * m + k] /= A[r * n + r];
+    return B;
+  }
+  const CALIB_PROMPTS = ['a photo of a city street with people', 'portrait photo of a woman, soft light',
+    'a mountain landscape with a lake and forest', 'a colorful abstract painting', 'a cat sitting on a wooden table',
+    'a snowy winter village at night'];
+  let encoderW = null;
+  async function getEncoder(S, onStatus) {
+    if (encoderW) return encoderW;
+    try {
+      const saved = JSON.parse(store.get('kiEncoder', 'null'));
+      if (saved?.v === ENC_VERSION && saved.base === modelBase() && saved.w?.length === NF * 4) return (encoderW = Float64Array.from(saved.w));
+    } catch { /* neu einmessen */ }
+    const XtX = new Float64Array(NF * NF), XtY = new Float64Array(NF * 4);
+    for (let n = 0; n < CALIB_PROMPTS.length; n++) {
+      onStatus(`KI wird für Bild-zu-Bild eingemessen (einmalig)… ${n + 1}/${CALIB_PROMPTS.length}`, n / CALIB_PROMPTS.length);
+      const { img, z } = await text2img(S, CALIB_PROMPTS[n], 7000 + n);
+      const F = blockFeatures(img);
+      for (let p = 0; p < 4096; p++) {
+        const o = p * NF;
+        for (let a = 0; a < NF; a++) {
+          const fa = F[o + a];
+          for (let b = 0; b < NF; b++) XtX[a * NF + b] += fa * F[o + b];
+          for (let c = 0; c < 4; c++) XtY[a * 4 + c] += fa * z[c * 4096 + p];
+        }
+      }
+    }
+    for (let a = 0; a < NF; a++) XtX[a * NF + a] += 1e-2; // leichte Regularisierung
+    encoderW = solve(XtX, XtY, NF, 4);
+    store.set('kiEncoder', JSON.stringify({ v: ENC_VERSION, base: modelBase(), w: Array.from(encoderW) }));
+    return encoderW;
+  }
+  function encodeImage(W, img) {
+    const F = blockFeatures(img), z = new Float32Array(LAT);
+    for (let p = 0; p < 4096; p++) {
+      for (let c = 0; c < 4; c++) {
+        let v = 0;
+        for (let a = 0; a < NF; a++) v += F[p * NF + a] * W[a * 4 + c];
+        z[c * 4096 + p] = v;
+      }
+    }
+    return z;
+  }
+
+  // Bild-zu-Bild: source = ImageData 512×512, strength 0..1 (wie stark umgestaltet wird)
+  async function img2img(prompt, seed, source, strength, onStatus = () => {}) {
+    const S = await prepare(onStatus);
+    const W = await getEncoder(S, onStatus);
+    onStatus('KI gestaltet um…', 1);
+    const hidden = await encodeText(S, prompt);
+    const t = Math.min(999, Math.max(50, Math.round(strength * 1000) - 1));
+    const z0 = encodeImage(W, source), noise = randn(seed, SIGMAS[t]);
+    for (let i = 0; i < LAT; i++) noise[i] += z0[i];
+    return decode(S, await denoise(S, hidden, noise, t));
+  }
+
   async function deleteModel() {
     if (sessions) for (const s of Object.values(sessions)) s.release?.();
-    sessions = null;
+    sessions = null; encoderW = null;
+    store.set('kiEncoder', 'null');
     await caches.delete(CACHE);
   }
 
   // ---------- Eigener KI-Server (Automatic1111 / Forge / SD.Next mit --api) ----------
-  async function serverGenerate({ url, prompt, negative, seed, width, height, steps }) {
+  async function serverCall(url, path, body) {
     const base = url.trim().replace(/\/+$/, '');
     let res;
     try {
-      res = await fetch(base + '/sdapi/v1/txt2img', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, negative_prompt: negative, seed, width, height, steps, cfg_scale: 7, sampler_name: 'Euler a' }),
-      });
+      res = await fetch(base + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     } catch {
       const host = new URL(base, location.href).hostname;
       const local = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(host);
@@ -321,9 +441,15 @@ const KI = (() => {
     await img.decode();
     return img;
   }
+  // init: optional {image: dataURL, strength} für Bild-zu-Bild
+  function serverGenerate({ url, prompt, negative, seed, width, height, steps, init }) {
+    const body = { prompt, negative_prompt: negative, seed, width, height, steps, cfg_scale: 7, sampler_name: 'Euler a' };
+    if (!init) return serverCall(url, '/sdapi/v1/txt2img', body);
+    return serverCall(url, '/sdapi/v1/img2img', { ...body, init_images: [init.image], denoising_strength: init.strength });
+  }
 
   return {
-    TOTAL_MB, store, translate, checkDevice, cachedState, prepare, generate, deleteModel, serverGenerate,
+    TOTAL_MB, store, translate, checkDevice, cachedState, prepare, generate, img2img, deleteModel, serverGenerate,
     isLoaded: () => !!sessions, getTokenizer,
   };
 })();
