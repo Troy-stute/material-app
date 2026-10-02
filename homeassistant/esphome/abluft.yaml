@@ -1,0 +1,126 @@
+# ESP32 für die Abluft im Technikraum
+#
+# - Lüfter 1: Abluft Drucker (zu Fenster 1), 4-Pin-PWM, 12 V
+# - Lüfter 2: Lötrauch (zu Fenster 2), 4-Pin-PWM, 12 V
+# - Sensirion SEN55: Feinstaub, VOC, Temperatur, Feuchte (I2C)
+#
+# Verdrahtung siehe homeassistant/README.md. In Home Assistant heißen die
+# Lüfter dann fan.abluft_drucker und fan.abluft_elektronik.
+
+esphome:
+  name: abluft
+  friendly_name: Abluft
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+
+logger:
+
+api:
+  encryption:
+    key: !secret abluft_api_key
+
+ota:
+  - platform: esphome
+    password: !secret abluft_ota_passwort
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_passwort
+  ap:
+    ssid: Abluft-Notfall
+
+i2c:
+  sda: GPIO21
+  scl: GPIO22
+
+output:
+  # PWM-Leitung der Lüfter (blaues Kabel), 25 kHz nach Intel-Spezifikation
+  - platform: ledc
+    id: pwm_drucker
+    pin: GPIO25
+    frequency: 25000 Hz
+  - platform: ledc
+    id: pwm_elektronik
+    pin: GPIO26
+    frequency: 25000 Hz
+
+switch:
+  # MOSFET in der 12-V-Leitung: viele PWM-Lüfter drehen bei 0 % sonst weiter
+  - platform: gpio
+    id: strom_drucker
+    pin: GPIO32
+    restore_mode: ALWAYS_OFF
+  - platform: gpio
+    id: strom_elektronik
+    pin: GPIO33
+    restore_mode: ALWAYS_OFF
+
+fan:
+  - platform: speed
+    id: luefter_drucker
+    name: Drucker
+    output: pwm_drucker
+    restore_mode: ALWAYS_OFF
+    on_turn_on:
+      - switch.turn_on: strom_drucker
+    on_turn_off:
+      - switch.turn_off: strom_drucker
+  - platform: speed
+    id: luefter_elektronik
+    name: Elektronik
+    output: pwm_elektronik
+    restore_mode: ALWAYS_OFF
+    on_turn_on:
+      - switch.turn_on: strom_elektronik
+    on_turn_off:
+      - switch.turn_off: strom_elektronik
+
+sensor:
+  - platform: sen5x
+    update_interval: 10s
+    pm_2_5:
+      name: PM2.5
+    pm_10_0:
+      name: PM10
+    voc:
+      name: VOC Index
+      algorithm_tuning:
+        index_offset: 100
+        learning_time_offset_hours: 12
+        learning_time_gain_hours: 12
+        gating_max_duration_minutes: 180
+        std_initial: 50
+        gain_factor: 230
+    temperature:
+      name: Temperatur
+    humidity:
+      name: Feuchte
+
+  # Drehzahl (gelbes Kabel, 2 Impulse pro Umdrehung) – zeigt, ob der Lüfter wirklich dreht
+  - platform: pulse_counter
+    pin:
+      number: GPIO27
+      mode:
+        input: true
+        pullup: true
+    name: Drucker Drehzahl
+    unit_of_measurement: rpm
+    filters:
+      - multiply: 0.5
+  - platform: pulse_counter
+    pin:
+      number: GPIO14
+      mode:
+        input: true
+        pullup: true
+    name: Elektronik Drehzahl
+    unit_of_measurement: rpm
+    filters:
+      - multiply: 0.5
+
+  - platform: wifi_signal
+    name: WLAN-Signal
+    update_interval: 60s

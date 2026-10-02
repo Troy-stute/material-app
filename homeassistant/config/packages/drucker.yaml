@@ -1,0 +1,74 @@
+# 3D-Drucker: "druckt gerade" aus dem Druckerstatus ODER aus der Leistung der Steckdose
+#
+# Der Status kommt aus der Drucker-Integration (siehe README). Fehlt sie noch,
+# reicht die smarte Steckdose: über 60 W heizt das Bett, also wird gedruckt.
+
+template:
+  - binary_sensor:
+      - name: Drucker 1 druckt
+        unique_id: drucker_1_druckt
+        icon: mdi:printer-3d-nozzle
+        state: >
+          {{ states('sensor.drucker_1_status') | lower in ['printing', 'busy', 'druckt']
+             or states('sensor.drucker_1_leistung') | float(0) > 60 }}
+        delay_off: "00:03:00"
+
+      - name: Drucker 2 druckt
+        unique_id: drucker_2_druckt
+        icon: mdi:printer-3d-nozzle
+        state: >
+          {{ states('sensor.drucker_2_status') | lower in ['printing', 'busy', 'druckt']
+             or states('sensor.drucker_2_leistung') | float(0) > 60 }}
+        delay_off: "00:03:00"
+
+      - name: Drucker aktiv
+        unique_id: drucker_aktiv
+        icon: mdi:printer-3d
+        state: >
+          {{ is_state('binary_sensor.drucker_1_druckt', 'on')
+             or is_state('binary_sensor.drucker_2_druckt', 'on') }}
+
+automation:
+  - id: drucker_fertig
+    alias: Drucker – Fertig melden
+    mode: queued
+    triggers:
+      - trigger: state
+        entity_id: binary_sensor.drucker_1_druckt
+        from: "on"
+        to: "off"
+        variables:
+          nummer: 1
+      - trigger: state
+        entity_id: binary_sensor.drucker_2_druckt
+        from: "on"
+        to: "off"
+        variables:
+          nummer: 2
+    actions:
+      - action: script.bunker_nachricht
+        data:
+          titel: Drucker {{ nummer }}
+          nachricht: Der Druck ist fertig.
+
+  - id: drucker_bunker_leer_aus
+    alias: Drucker – Abschalten, wenn fertig und keiner da
+    description: Steckdose 30 Minuten nach Druckende aus, wenn der Bunker leer ist (Nachkühlen abwarten)
+    mode: parallel
+    triggers:
+      - trigger: state
+        entity_id:
+          - binary_sensor.drucker_1_druckt
+          - binary_sensor.drucker_2_druckt
+        to: "off"
+        for: "00:30:00"
+    conditions:
+      - condition: state
+        entity_id: binary_sensor.bunker_jemand_da
+        state: "off"
+    actions:
+      - action: switch.turn_off
+        target:
+          entity_id: >
+            {{ 'switch.drucker_1_steckdose' if trigger.entity_id.endswith('1_druckt')
+               else 'switch.drucker_2_steckdose' }}

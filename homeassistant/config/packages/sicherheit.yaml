@@ -1,0 +1,69 @@
+# Sicherheit: Meldungen zusätzlich aufs Handy
+#
+# WICHTIG: Not-Aus, Rauch- und Wärmemelder bleiben fest verdrahtet und arbeiten
+# ohne Home Assistant. Hier wird nur zusätzlich benachrichtigt.
+
+automation:
+  - id: sicherheit_wasser
+    alias: Sicherheit – Wasser am Boden
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: binary_sensor.wassermelder
+        to: "on"
+    actions:
+      - action: script.bunker_nachricht
+        data:
+          titel: Wasser im Bunker!
+          nachricht: Der Wassermelder beim Eingang hat ausgelöst.
+          kritisch: true
+
+  - id: sicherheit_rauch
+    alias: Sicherheit – Rauch oder Hitze
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id:
+          - binary_sensor.rauchmelder_technikraum
+          - binary_sensor.waermemelder_drucker
+        to: "on"
+    actions:
+      - action: script.bunker_nachricht
+        data:
+          titel: ALARM im Bunker
+          nachricht: "{{ state_attr(trigger.entity_id, 'friendly_name') }} hat ausgelöst!"
+          kritisch: true
+      # Drucker stromlos machen, Abluft volle Leistung
+      - action: switch.turn_off
+        target:
+          entity_id:
+            - switch.drucker_1_steckdose
+            - switch.drucker_2_steckdose
+      - action: fan.set_percentage
+        target:
+          entity_id: fan.abluft_drucker
+        data:
+          percentage: 100
+
+  - id: sicherheit_tuer_scharf
+    alias: Sicherheit – Tür geöffnet, obwohl abgeschlossen
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: binary_sensor.bunkertuer
+        to: "on"
+    conditions:
+      - condition: state
+        entity_id: input_boolean.bunker_scharf
+        state: "on"
+      # Nur wenn keiner von euch laut Handy-Ortung da ist (zone.home = Anzahl Personen)
+      - condition: numeric_state
+        entity_id: zone.home
+        below: 1
+    actions:
+      - action: script.bunker_nachricht
+        data:
+          titel: Bunkertür geöffnet
+          nachricht: Die Tür wurde geöffnet, während der Bunker abgeschlossen war.
+          kritisch: true
+          bild: /api/camera_proxy/camera.vorraum

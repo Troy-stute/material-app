@@ -1,0 +1,133 @@
+# Grundlagen: Schalter für die Automatiken und Nachrichten an eure Handys
+
+input_boolean:
+  bunker_licht_automatik:
+    name: Licht-Automatik
+    icon: mdi:motion-sensor
+  bunker_lueftung_automatik:
+    name: Lüftungs-Automatik
+    icon: mdi:fan-auto
+  bunker_musik_beim_ankommen:
+    name: Musik beim Ankommen
+    icon: mdi:music-circle
+  bunker_scharf:
+    name: Bunker abgeschlossen
+    icon: mdi:shield-lock
+
+script:
+  bunker_nachricht:
+    alias: Nachricht an alle Handys
+    icon: mdi:cellphone-message
+    mode: queued
+    fields:
+      titel:
+        description: Überschrift
+        example: Bunker
+      nachricht:
+        description: Text der Nachricht
+        example: Drucker 1 ist fertig
+      kritisch:
+        description: Auch im Lautlos-Modus durchstellen
+        example: false
+      bild:
+        description: Optional ein Kamerabild anhängen
+        example: /api/camera_proxy/camera.vorraum
+    sequence:
+      # Hier eure Handys aus der Companion-App eintragen
+      # (Entwicklerwerkzeuge → Aktionen → "notify.mobile_app_…")
+      - action: notify.mobile_app_handy_1
+        continue_on_error: true
+        data: &nachricht
+          title: "{{ titel | default('Bunker') }}"
+          message: "{{ nachricht }}"
+          data:
+            ttl: 0
+            priority: high
+            image: "{{ bild | default('') }}"
+            push:
+              interruption-level: "{{ 'critical' if kritisch | default(false) else 'active' }}"
+      - action: notify.mobile_app_handy_2
+        continue_on_error: true
+        data: *nachricht
+
+  bunker_verlassen:
+    alias: Bunker verlassen
+    icon: mdi:exit-run
+    sequence:
+      - action: input_select.select_option
+        target:
+          entity_id: input_select.bunker_lichtmodus
+        data:
+          option: Aus
+      - action: script.musik_stopp
+      - action: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.bunker_scharf
+      - if:
+          - condition: state
+            entity_id: binary_sensor.drucker_aktiv
+            state: "on"
+        then:
+          - action: script.bunker_nachricht
+            data:
+              titel: Bunker verlassen
+              nachricht: Achtung, es läuft noch ein Druck. Die Abluft bleibt an.
+
+automation:
+  - id: bunker_ankommen
+    alias: Bunker – Ankommen
+    description: Erste Person kommt rein → Licht, Schild und auf Wunsch Musik
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id:
+          - binary_sensor.bunkertuer
+          - binary_sensor.vorraum_praesenz
+        to: "on"
+    conditions:
+      - condition: state
+        entity_id: input_select.bunker_lichtmodus
+        state: Aus
+      - condition: state
+        entity_id: input_boolean.bunker_licht_automatik
+        state: "on"
+    actions:
+      - action: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.bunker_scharf
+      - action: input_select.select_option
+        target:
+          entity_id: input_select.bunker_lichtmodus
+        data:
+          option: Gemütlich
+      - if:
+          - condition: state
+            entity_id: input_boolean.bunker_musik_beim_ankommen
+            state: "on"
+        then:
+          - action: script.musik_ankommen
+
+  - id: bunker_leer
+    alias: Bunker – Alle weg
+    description: 15 Minuten niemand da → alles aus
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: binary_sensor.bunker_jemand_da
+        to: "off"
+        for: "00:15:00"
+    conditions:
+      - condition: state
+        entity_id: input_boolean.bunker_licht_automatik
+        state: "on"
+    actions:
+      - action: script.bunker_verlassen
+
+template:
+  - binary_sensor:
+      - name: Bunker jemand da
+        unique_id: bunker_jemand_da
+        device_class: occupancy
+        state: >
+          {{ is_state('binary_sensor.vorraum_praesenz', 'on')
+             or is_state('binary_sensor.technikraum_praesenz', 'on') }}

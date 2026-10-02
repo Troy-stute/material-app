@@ -1,0 +1,32 @@
+# Home Assistant – Bunker (Technikraum + Vorraum)
+#
+# Diese Datei ersetzt die configuration.yaml auf dem Raspberry Pi.
+# Alles Bunker-Spezifische liegt nach Themen getrennt in packages/.
+
+default_config:
+
+homeassistant:
+  name: Bunker
+  unit_system: metric
+  time_zone: Europe/Berlin
+  country: DE
+  language: de
+  packages: !include_dir_named packages
+
+# Was über die Oberfläche angelegt wird, landet weiter in diesen Dateien
+automation: !include automations.yaml
+script: !include scripts.yaml
+scene: !include scenes.yaml
+
+lovelace:
+  dashboards:
+    bunker-zentrale:
+      mode: yaml
+      title: Bunker
+      icon: mdi:home-lightning-bolt
+      show_in_sidebar: true
+      filename: dashboards/bunker.yaml
+
+recorder:
+  purge_keep_days: 30
+  commit_interval: 30

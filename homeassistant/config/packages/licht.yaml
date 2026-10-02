@@ -1,0 +1,161 @@
+# Licht: vier Modi für beide Räume, dazu Präsenz im Technikraum
+
+input_select:
+  bunker_lichtmodus:
+    name: Lichtmodus
+    icon: mdi:lightbulb-group
+    options:
+      - Arbeit
+      - Gemütlich
+      - Party
+      - Aus
+
+script:
+  bunker_licht_anwenden:
+    alias: Lichtmodus anwenden
+    icon: mdi:lightbulb-auto
+    mode: restart
+    sequence:
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: input_select.bunker_lichtmodus
+                state: Arbeit
+            sequence:
+              - action: light.turn_on
+                target:
+                  entity_id:
+                    - light.technikraum_decke
+                    - light.technikraum_arbeitslicht
+                    - light.vorraum_decke
+                data:
+                  brightness_pct: 100
+                  color_temp_kelvin: 4500
+              - action: light.turn_on
+                target:
+                  entity_id: light.technikraum_rgb_boden
+                data:
+                  brightness_pct: 20
+                  rgb_color: [127, 232, 207]
+              - action: light.turn_on
+                target:
+                  entity_id: light.bunker_schild
+
+          - conditions:
+              - condition: state
+                entity_id: input_select.bunker_lichtmodus
+                state: Gemütlich
+            sequence:
+              - action: light.turn_on
+                target:
+                  entity_id:
+                    - light.vorraum_decke
+                    - light.technikraum_decke
+                data:
+                  brightness_pct: 35
+                  color_temp_kelvin: 2700
+              - action: light.turn_on
+                target:
+                  entity_id: light.vorraum_hexlampe
+                data:
+                  brightness_pct: 60
+              - action: light.turn_on
+                target:
+                  entity_id: light.technikraum_rgb_boden
+                data:
+                  brightness_pct: 50
+                  rgb_color: [139, 124, 246]
+              - action: light.turn_on
+                target:
+                  entity_id: light.bunker_schild
+              - action: light.turn_off
+                target:
+                  entity_id: light.technikraum_arbeitslicht
+
+          - conditions:
+              - condition: state
+                entity_id: input_select.bunker_lichtmodus
+                state: Party
+            sequence:
+              - action: light.turn_off
+                target:
+                  entity_id:
+                    - light.vorraum_decke
+                    - light.technikraum_decke
+                    - light.technikraum_arbeitslicht
+              - action: light.turn_on
+                target:
+                  entity_id:
+                    - light.technikraum_rgb_boden
+                    - light.vorraum_hexlampe
+                data:
+                  brightness_pct: 100
+              # WLED-Effekt; Namen stehen im WLED-Gerät unter "Effekte"
+              - action: light.turn_on
+                continue_on_error: true
+                target:
+                  entity_id: light.technikraum_rgb_boden
+                data:
+                  effect: Rainbow
+              - action: light.turn_on
+                target:
+                  entity_id: light.bunker_schild
+
+        default:
+          - action: light.turn_off
+            target:
+              entity_id:
+                - light.technikraum_decke
+                - light.technikraum_arbeitslicht
+                - light.technikraum_rgb_boden
+                - light.vorraum_decke
+                - light.vorraum_hexlampe
+                - light.bunker_schild
+
+automation:
+  - id: bunker_lichtmodus_geaendert
+    alias: Licht – Modus geändert
+    mode: restart
+    triggers:
+      - trigger: state
+        entity_id: input_select.bunker_lichtmodus
+    actions:
+      - action: script.bunker_licht_anwenden
+
+  - id: technikraum_arbeitslicht_praesenz
+    alias: Licht – Arbeitslicht nach Präsenz
+    description: Arbeitslicht an, sobald jemand im Technikraum ist (außer Party), aus nach 10 Minuten leer
+    mode: restart
+    triggers:
+      - trigger: state
+        entity_id: binary_sensor.technikraum_praesenz
+        to: "on"
+        id: da
+      - trigger: state
+        entity_id: binary_sensor.technikraum_praesenz
+        to: "off"
+        for: "00:10:00"
+        id: weg
+    conditions:
+      - condition: state
+        entity_id: input_boolean.bunker_licht_automatik
+        state: "on"
+    actions:
+      - choose:
+          - conditions:
+              - condition: trigger
+                id: da
+              - condition: state
+                entity_id: input_select.bunker_lichtmodus
+                state: Arbeit
+            sequence:
+              - action: light.turn_on
+                target:
+                  entity_id: light.technikraum_arbeitslicht
+          - conditions:
+              - condition: trigger
+                id: weg
+            sequence:
+              - action: light.turn_off
+                target:
+                  entity_id: light.technikraum_arbeitslicht

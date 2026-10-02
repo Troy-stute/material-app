@@ -1,0 +1,218 @@
+# Dashboard "Bunker" – fürs Handy und fürs Wanddisplay im Vorraum
+title: Bunker
+views:
+  - title: Zentrale
+    path: zentrale
+    icon: mdi:home-lightning-bolt
+    type: sections
+    max_columns: 4
+    sections:
+      - type: grid
+        cards:
+          - type: heading
+            heading: Licht
+            icon: mdi:lightbulb-group
+          - type: tile
+            entity: input_select.bunker_lichtmodus
+            grid_options:
+              columns: full
+            features:
+              - type: select-options
+          - type: tile
+            entity: light.technikraum_decke
+            name: Decke hinten
+            features:
+              - type: light-brightness
+          - type: tile
+            entity: light.vorraum_decke
+            name: Decke Vorraum
+            features:
+              - type: light-brightness
+          - type: tile
+            entity: light.technikraum_arbeitslicht
+            name: Arbeitslicht
+          - type: tile
+            entity: light.technikraum_rgb_boden
+            name: RGB-Boden
+          - type: tile
+            entity: light.vorraum_hexlampe
+            name: Hex-Lampe
+          - type: tile
+            entity: light.bunker_schild
+            name: Neon-Schild
+          - type: tile
+            entity: input_boolean.bunker_licht_automatik
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: 3D-Drucker
+            icon: mdi:printer-3d
+          - type: tile
+            entity: binary_sensor.drucker_1_druckt
+            name: Drucker 1
+          - type: tile
+            entity: binary_sensor.drucker_2_druckt
+            name: Drucker 2
+          - type: tile
+            entity: sensor.drucker_1_fortschritt
+            name: Fortschritt 1
+          - type: tile
+            entity: sensor.drucker_2_fortschritt
+            name: Fortschritt 2
+          - type: tile
+            entity: switch.drucker_1_steckdose
+            name: Strom Drucker 1
+          - type: tile
+            entity: switch.drucker_2_steckdose
+            name: Strom Drucker 2
+          - type: picture-entity
+            entity: camera.technikraum
+            name: Kamera Technikraum
+            camera_view: live
+            grid_options:
+              columns: full
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Lüftung
+            icon: mdi:fan
+          - type: tile
+            entity: fan.abluft_drucker
+            name: Abluft Drucker
+            features:
+              - type: fan-speed
+          - type: tile
+            entity: fan.abluft_elektronik
+            name: Lötrauch
+          - type: gauge
+            entity: sensor.abluft_voc_index
+            name: Luft (VOC)
+            min: 0
+            max: 500
+            severity:
+              green: 0
+              yellow: 150
+              red: 250
+          - type: gauge
+            entity: sensor.abluft_pm2_5
+            name: Feinstaub
+            min: 0
+            max: 100
+            severity:
+              green: 0
+              yellow: 15
+              red: 35
+          - type: tile
+            entity: input_boolean.bunker_lueftung_automatik
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Filamentschrank
+            icon: mdi:printer-3d-nozzle-heat
+          - type: gauge
+            entity: sensor.filament_feuchte_max
+            name: Feuchte (höchstes Fach)
+            min: 0
+            max: 60
+            needle: true
+            severity:
+              green: 0
+              yellow: 25
+              red: 35
+            grid_options:
+              columns: full
+          - type: tile
+            entity: switch.entfeuchter
+            name: Entfeuchter
+          - type: tile
+            entity: input_number.filament_feuchte_ein
+            features:
+              - type: numeric-input
+                style: buttons
+          - type: history-graph
+            title: Feuchte pro Fach
+            hours_to_show: 48
+            entities:
+              - entity: sensor.filament_fach_1_feuchte
+                name: Fach 1
+              - entity: sensor.filament_fach_2_feuchte
+                name: Fach 2
+              - entity: sensor.filament_fach_3_feuchte
+                name: Fach 3
+              - entity: sensor.filament_fach_4_feuchte
+                name: Fach 4
+            grid_options:
+              columns: full
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Kühlung und Klima
+            icon: mdi:thermometer
+          - type: tile
+            entity: sensor.technikraum_temperatur
+            name: Technikraum
+          - type: tile
+            entity: sensor.technikraum_feuchte
+            name: Feuchte Raum
+          - type: tile
+            entity: sensor.kuehlschrank_temperatur
+            name: Kühlschrank
+          - type: tile
+            entity: sensor.rack_temperatur
+            name: Rack
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Musik
+            icon: mdi:music
+          - type: media-control
+            entity: media_player.vorraum
+            grid_options:
+              columns: full
+          - type: media-control
+            entity: media_player.technikraum
+            grid_options:
+              columns: full
+          - type: tile
+            entity: script.musik_ankommen
+            name: Playlist starten
+          - type: tile
+            entity: script.musik_ueberall
+            name: Beide Räume
+          - type: tile
+            entity: input_boolean.bunker_musik_beim_ankommen
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Sicherheit
+            icon: mdi:shield-home
+          - type: tile
+            entity: binary_sensor.bunkertuer
+            name: Bunkertür
+          - type: tile
+            entity: binary_sensor.wassermelder
+            name: Wasser
+          - type: tile
+            entity: binary_sensor.vorraum_praesenz
+            name: Vorraum
+          - type: tile
+            entity: binary_sensor.technikraum_praesenz
+            name: Technikraum
+          - type: tile
+            entity: input_boolean.bunker_scharf
+          - type: tile
+            entity: script.bunker_verlassen
+            name: Bunker verlassen
+            icon: mdi:exit-run
+          - type: picture-entity
+            entity: camera.vorraum
+            name: Kamera Vorraum
+            camera_view: live
+            grid_options:
+              columns: full

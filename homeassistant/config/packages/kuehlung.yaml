@@ -1,0 +1,50 @@
+# Kühlung: Kühlschrank im Vorraum, Netzwerk-Rack und Raumtemperatur
+
+automation:
+  - id: kuehlschrank_zu_warm
+    alias: Kühlung – Kühlschrank zu warm
+    mode: single
+    triggers:
+      - trigger: numeric_state
+        entity_id: sensor.kuehlschrank_temperatur
+        above: 8
+        for: "00:20:00"
+    actions:
+      - action: script.bunker_nachricht
+        data:
+          titel: Kühlschrank
+          nachricht: >
+            Seit 20 Minuten {{ states('sensor.kuehlschrank_temperatur') }} °C.
+            Tür offen oder Stecker raus?
+
+  - id: rack_zu_warm
+    alias: Kühlung – Rack zu warm
+    mode: single
+    triggers:
+      - trigger: numeric_state
+        entity_id: sensor.rack_temperatur
+        above: 40
+        for: "00:10:00"
+    actions:
+      - action: script.bunker_nachricht
+        data:
+          titel: Netzwerk-Rack
+          nachricht: >
+            Im Rack sind es {{ states('sensor.rack_temperatur') }} °C.
+            Lüfter und Luftschlitze prüfen.
+
+  - id: technikraum_zu_warm
+    alias: Kühlung – Technikraum zu warm
+    mode: single
+    triggers:
+      - trigger: numeric_state
+        entity_id: sensor.technikraum_temperatur
+        above: 32
+        for: "00:15:00"
+    actions:
+      - action: script.bunker_nachricht
+        data:
+          titel: Technikraum
+          nachricht: >
+            {{ states('sensor.technikraum_temperatur') }} °C im Technikraum.
+            Die Abluft läuft schon mit, Fenster öffnen hilft.

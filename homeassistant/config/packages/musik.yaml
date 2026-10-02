@@ -1,0 +1,72 @@
+# Musik über das Add-on "Music Assistant"
+#
+# Zone 1 = PA im Vorraum (über Streamer), Zone 2 = Lautsprecher hinten im Technikraum.
+
+input_text:
+  bunker_playlist:
+    name: Playlist beim Ankommen
+    icon: mdi:playlist-music
+    initial: Bunker
+
+input_number:
+  bunker_lautstaerke_ankommen:
+    name: Lautstärke beim Ankommen
+    icon: mdi:volume-medium
+    min: 5
+    max: 60
+    step: 5
+    initial: 25
+    unit_of_measurement: "%"
+
+script:
+  musik_ankommen:
+    alias: Musik – Ankommen
+    icon: mdi:music
+    sequence:
+      - action: media_player.volume_set
+        continue_on_error: true
+        target:
+          entity_id: media_player.vorraum
+        data:
+          volume_level: "{{ states('input_number.bunker_lautstaerke_ankommen') | float(25) / 100 }}"
+      - action: music_assistant.play_media
+        target:
+          entity_id: media_player.vorraum
+        data:
+          media_id: "{{ states('input_text.bunker_playlist') }}"
+          media_type: playlist
+
+  musik_ueberall:
+    alias: Musik – Beide Räume
+    icon: mdi:speaker-multiple
+    sequence:
+      - action: media_player.join
+        target:
+          entity_id: media_player.vorraum
+        data:
+          group_members:
+            - media_player.technikraum
+
+  musik_stopp:
+    alias: Musik – Stopp
+    icon: mdi:stop-circle
+    sequence:
+      - action: media_player.media_pause
+        continue_on_error: true
+        target:
+          entity_id:
+            - media_player.vorraum
+            - media_player.technikraum
+
+automation:
+  - id: musik_party_lauter
+    alias: Musik – Party-Modus
+    description: Lichtmodus Party → Musik in beiden Räumen
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: input_select.bunker_lichtmodus
+        to: Party
+    actions:
+      - action: script.musik_ueberall
+        continue_on_error: true

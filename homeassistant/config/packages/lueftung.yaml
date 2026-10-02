@@ -1,0 +1,99 @@
+# Lüftung: Abluft Drucker (zu Fenster 1) und Lötrauch (zu Fenster 2)
+#
+# Die Lüfter hängen am ESP32 aus esphome/abluft.yaml.
+# Ein Sollwert-Sensor rechnet aus, wie schnell die Drucker-Abluft laufen soll.
+
+template:
+  - binary_sensor:
+      - name: Elektronik-Platz aktiv
+        unique_id: elektronik_platz_aktiv
+        icon: mdi:soldering-iron
+        # Lötstation zieht beim Heizen und Halten deutlich mehr als im Standby
+        state: "{{ states('sensor.loetstation_leistung') | float(0) > 15 }}"
+        delay_off: "00:05:00"
+
+  - sensor:
+      - name: Abluft Drucker Sollwert
+        unique_id: abluft_drucker_sollwert
+        unit_of_measurement: "%"
+        icon: mdi:fan-chevron-up
+        state: >
+          {% set voc = states('sensor.abluft_voc_index') | float(0) %}
+          {% set pm = states('sensor.abluft_pm2_5') | float(0) %}
+          {% set temp = states('sensor.technikraum_temperatur') | float(20) %}
+          {% if voc > 250 or pm > 35 %} 100
+          {% elif is_state('binary_sensor.drucker_aktiv', 'on') %} 60
+          {% elif voc > 150 or temp > 30 %} 40
+          {% else %} 0
+          {% endif %}
+
+automation:
+  - id: abluft_drucker_regeln
+    alias: Lüftung – Abluft Drucker regeln
+    mode: restart
+    triggers:
+      - trigger: state
+        entity_id: sensor.abluft_drucker_sollwert
+      - trigger: state
+        entity_id: input_boolean.bunker_lueftung_automatik
+        to: "on"
+    conditions:
+      - condition: state
+        entity_id: input_boolean.bunker_lueftung_automatik
+        state: "on"
+    actions:
+      - variables:
+          soll: "{{ states('sensor.abluft_drucker_sollwert') | int(0) }}"
+      - if:
+          - condition: template
+            value_template: "{{ soll > 0 }}"
+        then:
+          - action: fan.set_percentage
+            target:
+              entity_id: fan.abluft_drucker
+            data:
+              percentage: "{{ soll }}"
+        else:
+          # 10 Minuten Nachlauf, damit die Reste aus dem Druckraum rausgehen
+          - delay: "00:10:00"
+          - action: fan.turn_off
+            target:
+              entity_id: fan.abluft_drucker
+
+  - id: abluft_elektronik_regeln
+    alias: Lüftung – Lötrauch absaugen
+    mode: restart
+    triggers:
+      - trigger: state
+        entity_id: binary_sensor.elektronik_platz_aktiv
+    conditions:
+      - condition: state
+        entity_id: input_boolean.bunker_lueftung_automatik
+        state: "on"
+    actions:
+      - action: "fan.turn_{{ 'on' if trigger.to_state.state == 'on' else 'off' }}"
+        target:
+          entity_id: fan.abluft_elektronik
+
+  - id: luft_warnung
+    alias: Lüftung – Schlechte Luft melden
+    mode: single
+    max_exceeded: silent
+    triggers:
+      - trigger: numeric_state
+        entity_id: sensor.abluft_voc_index
+        above: 300
+        for: "00:05:00"
+      - trigger: numeric_state
+        entity_id: sensor.abluft_pm2_5
+        above: 50
+        for: "00:05:00"
+    actions:
+      - action: script.bunker_nachricht
+        data:
+          titel: Luft im Technikraum
+          nachricht: >
+            Die Luft ist seit 5 Minuten schlecht
+            (VOC {{ states('sensor.abluft_voc_index') }}, Feinstaub {{ states('sensor.abluft_pm2_5') }} µg/m³).
+            Abluft und Fenster prüfen.
+      - delay: "00:30:00"

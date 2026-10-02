@@ -1,0 +1,92 @@
+# Filamentschrank (DETOLF): ein Feuchtesensor pro Fach, Entfeuchter an smarter Steckdose
+
+input_number:
+  filament_feuchte_ein:
+    name: Entfeuchter an ab
+    icon: mdi:water-percent-alert
+    min: 15
+    max: 50
+    step: 1
+    initial: 30
+    unit_of_measurement: "%"
+  filament_feuchte_aus:
+    name: Entfeuchter aus unter
+    icon: mdi:water-percent
+    min: 10
+    max: 40
+    step: 1
+    initial: 20
+    unit_of_measurement: "%"
+
+template:
+  - sensor:
+      - name: Filament Feuchte max
+        unique_id: filament_feuchte_max
+        unit_of_measurement: "%"
+        device_class: humidity
+        state_class: measurement
+        state: >
+          {% set werte = [
+            states('sensor.filament_fach_1_feuchte'),
+            states('sensor.filament_fach_2_feuchte'),
+            states('sensor.filament_fach_3_feuchte'),
+            states('sensor.filament_fach_4_feuchte')
+          ] | select('is_number') | map('float') | list %}
+          {{ werte | max if werte else none }}
+        availability: >
+          {{ expand('sensor.filament_fach_1_feuchte', 'sensor.filament_fach_2_feuchte',
+                    'sensor.filament_fach_3_feuchte', 'sensor.filament_fach_4_feuchte')
+             | map(attribute='state') | select('is_number') | list | count > 0 }}
+
+automation:
+  - id: filament_entfeuchter
+    alias: Filament – Entfeuchter steuern
+    mode: restart
+    triggers:
+      - trigger: numeric_state
+        entity_id: sensor.filament_feuchte_max
+        above: input_number.filament_feuchte_ein
+        for: "00:05:00"
+        id: an
+      - trigger: numeric_state
+        entity_id: sensor.filament_feuchte_max
+        below: input_number.filament_feuchte_aus
+        for: "00:10:00"
+        id: aus
+    actions:
+      - action: "switch.turn_{{ 'on' if trigger.id == 'an' else 'off' }}"
+        target:
+          entity_id: switch.entfeuchter
+
+  - id: filament_zu_feucht
+    alias: Filament – Zu feucht melden
+    mode: single
+    triggers:
+      - trigger: numeric_state
+        entity_id: sensor.filament_feuchte_max
+        above: 40
+        for: "00:30:00"
+    actions:
+      - action: script.bunker_nachricht
+        data:
+          titel: Filamentschrank
+          nachricht: >
+            Seit 30 Minuten über 40 % Feuchte ({{ states('sensor.filament_feuchte_max') }} %).
+            Tür zu? Trockenmittel voll? Entfeuchter prüfen.
+
+  - id: filament_sensor_batterie
+    alias: Filament – Sensor-Batterie schwach
+    mode: queued
+    triggers:
+      - trigger: numeric_state
+        entity_id:
+          - sensor.filament_fach_1_batterie
+          - sensor.filament_fach_2_batterie
+          - sensor.filament_fach_3_batterie
+          - sensor.filament_fach_4_batterie
+        below: 15
+    actions:
+      - action: script.bunker_nachricht
+        data:
+          titel: Batterie wechseln
+          nachricht: "{{ state_attr(trigger.entity_id, 'friendly_name') }} ist bei {{ trigger.to_state.state }} %."
