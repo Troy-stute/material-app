@@ -96,6 +96,12 @@
   .modes button.on small { color: inherit; opacity: .85; }
   .progress { height: 8px; border-radius: 999px; background: var(--line); overflow: hidden; margin-top: 8px; }
   .progress div { height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+  #pickDlg { width: min(720px, 94vw); }
+  .pick { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+  .pick button { border: 2px solid var(--line); border-radius: 12px; padding: 0; overflow: hidden; background: var(--bg); position: relative; }
+  .pick button:hover, .pick button:focus-visible { border-color: var(--accent); outline: none; }
+  .pick canvas { display: block; width: 100%; height: auto; }
+  .pick span { position: absolute; left: 6px; bottom: 6px; background: rgba(0,0,0,.6); color: #fff; font-size: 12px; padding: 2px 8px; border-radius: 999px; }
   #busy small { display: block; font-weight: 400; opacity: .85; margin-top: 4px; }
   @media (max-width: 480px) {
     header { gap: 4px; padding-left: 8px; padding-right: 8px; }
@@ -181,6 +187,12 @@
         </div>
       </div>
       <label class="check" style="margin-top:10px"><input type="checkbox" id="kiTranslate" checked>Deutsch automatisch ins Englische übersetzen</label>
+      <label class="check" style="margin-top:8px"><input type="checkbox" id="kiUseImg">Aktuelles Bild als Vorlage (Bild-zu-Bild)</label>
+      <div id="kiStrRow" hidden>
+        <div class="slider"><span>Veränderung</span><input type="range" id="kiStrength" min="30" max="95" value="60"><output></output></div>
+        <p class="hint" id="kiI2IHint" style="margin-top:4px">Wenig = nah an der Vorlage, viel = freier umgestaltet. Die Vorlage wird dafür auf 512 × 512 zugeschnitten.</p>
+      </div>
+      <label class="check" style="margin-top:8px"><input type="checkbox" id="kiUpscale">Danach per KI auf doppelte Grösse schärfen</label>
     </div>
     <div class="two">
       <label data-math>Motiv <select id="motif"></select></label>
@@ -196,6 +208,7 @@
       </label>
       <label>Seed <input id="seed" type="number" min="0" placeholder="zufällig"></label>
     </div>
+    <label class="check" style="margin-top:10px"><input type="checkbox" id="variants">4 Varianten erzeugen und das beste auswählen</label>
     <div class="btns">
       <button class="btn primary" id="genBtn">Erzeugen</button>
       <button class="btn" id="varBtn">🎲 Neue Variante</button>
@@ -256,6 +269,12 @@
       <button class="btn small" id="resizeBtn">Anwenden</button>
     </div>
     <label class="check" style="margin-top:8px"><input type="checkbox" id="rlock" checked>Seitenverhältnis beibehalten</label>
+    <h3>KI-Hochskalieren</h3>
+    <p class="hint" style="margin-top:0">Vergrössert mit einem KI-Modell und rechnet dabei Details nach – schärfer als normales Vergrössern. Läuft offline.</p>
+    <div class="btns">
+      <button class="btn small" data-up="2">🔍 2× vergrössern</button>
+      <button class="btn small" data-up="4">🔍 4× vergrössern</button>
+    </div>
   </div>
 
   <div class="pane" data-pane="paint">
@@ -308,6 +327,12 @@
 <input type="file" id="file" accept="image/*" hidden>
 <div id="toast"></div>
 
+<dialog id="pickDlg">
+  <h2>Welches gefällt dir am besten?</h2>
+  <div class="pick" id="pickGrid"></div>
+  <div class="btns" style="justify-content:flex-end"><button class="btn" id="pickCancel">Alle verwerfen</button></div>
+</dialog>
+
 <dialog id="saveDlg">
   <h2>Bild speichern</h2>
   <label>Dateiname <input id="fname" autocomplete="off"></label>
@@ -329,6 +354,7 @@
 <script src="gen.js"></script>
 <script src="filters.js"></script>
 <script src="ki.js"></script>
+<script src="upscale.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

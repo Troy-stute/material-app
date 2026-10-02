@@ -165,24 +165,84 @@ function currentSeed(prompt) {
 }
 const generate = () => (genMode === 'ki' ? generateKi() : generateMath());
 
-function generateMath() {
-  const prompt = $('#prompt').value.trim(), seed = currentSeed(prompt);
+// Ergebnis (Canvas, ImageData oder Bild) als neues Dokument übernehmen
+function applyResult(src) {
+  setSize(src.width, src.height);
+  ctx.clearRect(0, 0, src.width, src.height);
+  if (src instanceof ImageData) ctx.putImageData(src, 0, 0); else ctx.drawImage(src, 0, 0);
+  commit();
+}
+function toCanvas(src) {
+  if (src instanceof HTMLCanvasElement) return src;
+  const c = document.createElement('canvas');
+  c.width = src.width; c.height = src.height;
+  const g = c.getContext('2d');
+  if (src instanceof ImageData) g.putImageData(src, 0, 0); else g.drawImage(src, 0, 0);
+  return c;
+}
+// Ausschnitt in Wunschgrösse, Bild füllt die Fläche (mittig zugeschnitten)
+function coverCanvas(src, w, h) {
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const g = c.getContext('2d', { willReadFrequently: true }), s = Math.max(w / src.width, h / src.height);
+  g.imageSmoothingQuality = 'high';
+  g.drawImage(src, (w - src.width * s) / 2, (h - src.height * s) / 2, src.width * s, src.height * s);
+  return c;
+}
 
+// Mehrere Varianten zur Auswahl zeigen; liefert den gewählten Index oder -1
+const pickDlg = $('#pickDlg');
+function pickVariant(list) {
+  return new Promise((resolve) => {
+    const grid = $('#pickGrid');
+    grid.innerHTML = '';
+    list.forEach((v, i) => {
+      const b = document.createElement('button'), tag = document.createElement('span');
+      tag.textContent = 'Seed ' + v.seed;
+      b.append(v.canvas, tag);
+      b.onclick = () => { resolve(i); pickDlg.close(); };
+      grid.appendChild(b);
+    });
+    $('#pickCancel').onclick = () => pickDlg.close();
+    pickDlg.onclose = () => resolve(-1);
+    pickDlg.showModal();
+  });
+}
+const variantCount = () => ($('#variants').checked ? 4 : 1);
+
+async function renderMath(list, count, { motif, palette, seed, w, h }) {
+  for (let i = 0; i < count; i++) {
+    await busy(count > 1 ? `Variante ${i + 1} von ${count}…` : 'Bild wird erzeugt…', () => {
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      Gen.draw(c.getContext('2d', { willReadFrequently: true }), { motif, palette, seed: seed + i });
+      list.push({ canvas: c, seed: seed + i });
+    });
+  }
+}
+async function generateMath() {
+  const prompt = $('#prompt').value.trim(), seed = currentSeed(prompt);
   const r = Gen.rng(seed ^ 0x9e3779b9), hint = Gen.interpret(prompt);
   const pick = (arr) => arr[(r() * arr.length) | 0];
   const motif = motifSel.value !== 'auto' ? motifSel.value : hint.motif || pick(Object.keys(Gen.MOTIFS));
   const palette = palSel.value !== 'auto' ? palSel.value : hint.palette || pick([...Object.keys(Gen.PALETTES), 'zufall']);
-  const [w, h] = $('#size').value.split('x').map(Number);
-
+  const [w, h] = $('#size').value.split('x').map(Number), count = variantCount(), list = [];
+  if (kiBusy) return;
   endPreview(true); clearCrop();
-  return busy('Bild wird erzeugt…', () => {
-    canvas.width = w; canvas.height = h;
-    Gen.draw(ctx, { motif, palette, seed });
-    fileBase = slug(prompt || Gen.MOTIFS[motif].label);
-    commit();
-    const palLabel = palette === 'zufall' ? 'Zufallsfarben' : Gen.PALETTES[palette].label;
-    $('#genInfo').textContent = `${Gen.MOTIFS[motif].label} · ${palLabel} · Seed ${seed} · ${w} × ${h}`;
-  });
+  lockGen(true);
+  try {
+    await renderMath(list, count, { motif, palette, seed, w, h });
+  } finally {
+    lockGen(false);
+  }
+  if (list.length < count) return;
+  const k = count > 1 ? await pickVariant(list) : 0;
+  if (k < 0) return;
+  applyResult(list[k].canvas);
+  $('#seed').value = list[k].seed;
+  fileBase = slug(prompt || Gen.MOTIFS[motif].label);
+  const palLabel = palette === 'zufall' ? 'Zufallsfarben' : Gen.PALETTES[palette].label;
+  $('#genInfo').textContent = `${Gen.MOTIFS[motif].label} · ${palLabel} · Seed ${list[k].seed} · ${w} × ${h}`;
 }
 $('#genBtn').onclick = generate;
 
@@ -202,6 +262,9 @@ function setMode(m) {
   $('#sizeLabel').hidden = ki && browser; // SD-Turbo rechnet immer in 512 × 512
   $('#kiBrowser').hidden = !browser;
   $('#kiServer').hidden = browser;
+  $('#kiI2IHint').textContent = browser
+    ? 'Wenig = nah an der Vorlage, viel = freier umgestaltet. Die Vorlage wird dafür auf 512 × 512 zugeschnitten.'
+    : 'Wenig = nah an der Vorlage, viel = freier umgestaltet. Die Vorlage wird höchstens 1024 px gross an den Server geschickt.';
   $('#promptLabel').textContent = ki ? 'Was soll auf dem Bild sein?' : 'Stichworte (optional)';
   $('#prompt').placeholder = ki ? 'z. B. eine Katze mit Hut im Wald, Aquarell' : 'z. B. Berge im Sonnenuntergang';
   $('#genInfo').textContent = ki
@@ -264,7 +327,9 @@ async function generateKi() {
   if (kiBusy) return;
   const prompt = $('#prompt').value.trim();
   if (!prompt) { toast('Beschreibe zuerst, was auf dem Bild sein soll'); $('#prompt').focus(); return; }
-  const seed = currentSeed(prompt), browser = kiEngine.value === 'browser';
+  const browser = kiEngine.value === 'browser', useImg = $('#kiUseImg').checked;
+  if (useImg && !hasImage) { toast('Für Bild-zu-Bild zuerst ein Bild öffnen oder erzeugen'); return; }
+  const seed = currentSeed(prompt), count = variantCount(), strength = +$('#kiStrength').value / 100;
   const text = $('#kiTranslate').checked ? KI.translate(prompt) : prompt;
   if (browser && !KI.isLoaded()) {
     const problem = await KI.checkDevice();
@@ -273,25 +338,43 @@ async function generateKi() {
     if (!cached.complete && !confirm(`Das KI-Modell (~${(KI.TOTAL_MB / 1000).toFixed(1).replace('.', ',')} GB) wird jetzt einmalig heruntergeladen. Fortfahren?`)) return;
   }
   endPreview(true); clearCrop();
+
+  // Vorlage festhalten, bevor gerechnet wird
+  let source = null, init = null, [width, height] = $('#size').value.split('x').map(Number);
+  if (useImg && browser) source = coverCanvas(canvas, 512, 512).getContext('2d').getImageData(0, 0, 512, 512);
+  if (useImg && !browser) {
+    const s = Math.min(1, 1024 / Math.max(canvas.width, canvas.height));
+    width = Math.max(64, Math.round(canvas.width * s / 8) * 8); height = Math.max(64, Math.round(canvas.height * s / 8) * 8);
+    init = { image: coverCanvas(canvas, width, height).toDataURL('image/png'), strength };
+  }
+
   lockGen(true);
   setBusy('KI startet…');
   try {
-    const t0 = performance.now();
-    let src;
-    if (browser) {
-      src = await KI.generate(text, seed, (msg, frac) => { setBusy(msg, frac); kiProgress(frac < 1 ? frac : null); });
-    } else {
-      const [width, height] = $('#size').value.split('x').map(Number);
-      src = await KI.serverGenerate({ url: $('#kiUrl').value, prompt: text, negative: $('#kiNeg').value, seed, width, height, steps: +$('#kiSteps').value || 20 });
+    const t0 = performance.now(), list = [];
+    for (let i = 0; i < count; i++) {
+      const s = seed + i, part = count > 1 ? ` (Bild ${i + 1} von ${count})` : '';
+      const status = (msg, frac) => { setBusy(msg + part, frac); kiProgress(frac < 1 ? frac : null); };
+      let src;
+      if (browser) {
+        src = source ? await KI.img2img(text, s, source, strength, status) : await KI.generate(text, s, status);
+      } else {
+        status('KI-Server rechnet…');
+        src = await KI.serverGenerate({ url: $('#kiUrl').value, prompt: text, negative: $('#kiNeg').value, seed: s, width, height, steps: +$('#kiSteps').value || 20, init });
+      }
+      list.push({ canvas: toCanvas(src), seed: s });
     }
-    setSize(src.width, src.height);
-    ctx.clearRect(0, 0, src.width, src.height);
-    if (src instanceof ImageData) ctx.putImageData(src, 0, 0); else ctx.drawImage(src, 0, 0);
+    setBusy(null); kiProgress(null);
+    const k = count > 1 ? await pickVariant(list) : 0;
+    if (k < 0) return;
+    let result = list[k].canvas;
+    if ($('#kiUpscale').checked) result = await upscaleCanvas(result, 2);
+    applyResult(result);
+    $('#seed').value = list[k].seed;
     fileBase = slug(prompt);
-    commit();
     const secs = ((performance.now() - t0) / 1000).toFixed(1);
-    $('#genInfo').textContent = `KI (${browser ? 'SD-Turbo' : 'Server'}) · Seed ${seed} · ${src.width} × ${src.height} · ${secs} s` +
-      (text !== prompt ? ` · verstanden als: «${text}»` : '');
+    $('#genInfo').textContent = `KI (${browser ? 'SD-Turbo' : 'Server'}${useImg ? ', Bild-zu-Bild ' + Math.round(strength * 100) + ' %' : ''}) · Seed ${list[k].seed} · ` +
+      `${result.width} × ${result.height} · ${secs} s` + (text !== prompt ? ` · verstanden als: «${text}»` : '');
   } catch (e) {
     console.error(e); toast(e.message);
   } finally {
@@ -299,6 +382,42 @@ async function generateKi() {
     if (browser) refreshKiStatus();
   }
 }
+
+// ---------- KI-Hochskalieren ----------
+async function upscaleCanvas(src, scale) {
+  const w = src.width * scale, h = src.height * scale;
+  if (w * h > MAX_PIXELS || Math.max(w, h) > 8192) throw new Error(`Zu gross für ${scale}× (${w} × ${h}) – höchstens 16 Megapixel. Zuerst verkleinern oder zuschneiden.`);
+  setBusy(`KI vergrössert ${scale}× …`, 0);
+  return Upscale.run(src, scale, (f) => setBusy(`KI vergrössert ${scale}× …`, f));
+}
+$$('[data-up]').forEach((b) => {
+  b.onclick = async () => {
+    if (!needImage() || kiBusy) return;
+    endPreview(true); clearCrop();
+    lockGen(true);
+    try {
+      const t0 = performance.now(), out = await upscaleCanvas(copyCanvas(), +b.dataset.up);
+      applyResult(out);
+      toast(`Vergrössert auf ${out.width} × ${out.height} (${((performance.now() - t0) / 1000).toFixed(1)} s)`);
+    } catch (e) {
+      console.error(e); toast(e.message);
+    } finally {
+      setBusy(null); lockGen(false);
+    }
+  };
+});
+
+// Einstellungen merken
+for (const id of ['variants', 'kiUpscale', 'kiUseImg']) {
+  const el = $('#' + id);
+  el.checked = KI.store.get(id, el.checked ? '1' : '0') === '1';
+  el.addEventListener('change', () => KI.store.set(id, el.checked ? '1' : '0'));
+}
+const syncI2I = () => { $('#kiStrRow').hidden = !$('#kiUseImg').checked; };
+$('#kiUseImg').addEventListener('change', syncI2I);
+syncI2I();
+bindOutput($('#kiStrength'), (v) => v + ' %');
+
 $('#varBtn').onclick = () => { $('#seed').value = (Math.random() * 1e6) | 0; generate(); };
 
 $('#blankBtn').onclick = () => {
