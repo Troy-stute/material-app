@@ -239,11 +239,16 @@ const KI = (() => {
   }
 
   // Tensor im Datentyp, den das Modell für diesen Eingang erwartet
-  function tensor(sess, name, f32, dims, fallback) {
+  // (je nach Export z. B. timestep als float16 oder int64)
+  function tensor(sess, name, values, dims, fallback) {
     const meta = sess.inputMetadata?.find?.((x) => x.name === name);
     const type = meta?.type || fallback;
-    if (type === 'float16') return new ort.Tensor('float16', Uint16Array.from(f32, toHalf), dims);
-    return new ort.Tensor('float32', Float32Array.from(f32), dims);
+    switch (type) {
+      case 'float16': return new ort.Tensor('float16', Uint16Array.from(values, toHalf), dims);
+      case 'int64': return new ort.Tensor('int64', BigInt64Array.from(values, (v) => BigInt(Math.round(v))), dims);
+      case 'int32': return new ort.Tensor('int32', Int32Array.from(values, Math.round), dims);
+      default: return new ort.Tensor('float32', Float32Array.from(values), dims);
+    }
   }
   const first = (out, name) => out[name] || out[Object.keys(out)[0]];
 
@@ -252,9 +257,7 @@ const KI = (() => {
     const S = await prepare(onStatus);
     onStatus('KI malt…', 1);
     const ids = (await getTokenizer()).encode(prompt);
-    const idMeta = S.text_encoder.inputMetadata?.find?.((x) => x.name === 'input_ids');
-    const idT = idMeta?.type === 'int64' ? new ort.Tensor('int64', BigInt64Array.from(ids, BigInt), [1, 77]) : new ort.Tensor('int32', ids, [1, 77]);
-    const te = await S.text_encoder.run({ input_ids: idT });
+    const te = await S.text_encoder.run({ input_ids: tensor(S.text_encoder, 'input_ids', ids, [1, 77], 'int32') });
     const hidden = first(te, 'last_hidden_state');
 
     // Startrauschen aus dem Seed (Box-Muller)
