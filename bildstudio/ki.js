@@ -303,7 +303,12 @@ const KI = (() => {
         body: JSON.stringify({ prompt, negative_prompt: negative, seed, width, height, steps, cfg_scale: 7, sampler_name: 'Euler a' }),
       });
     } catch {
-      throw new Error('KI-Server nicht erreichbar. Läuft er mit --api und --cors-allow-origins?');
+      const host = new URL(base, location.href).hostname;
+      const local = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(host);
+      if (location.protocol === 'https:' && base.startsWith('http:') && !local) {
+        throw new Error(`Der Browser blockiert die unverschlüsselte Adresse ${base}. Den KI-Server auf diesem PC (localhost) nutzen oder bei «KI-Motor» «Im Browser» wählen.`);
+      }
+      throw new Error(`Kein KI-Server unter ${base} gefunden. Läuft auf dem PC ein Stable-Diffusion-Programm mit --api? Sonst bei «KI-Motor» «Im Browser» wählen.`);
     }
     if (!res.ok) throw new Error(`KI-Server meldet Fehler ${res.status}`);
     const j = await res.json();
