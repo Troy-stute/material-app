@@ -1,0 +1,859 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kartoffel-Schälerei</title>
+<style>
+  :root { color-scheme:dark; --gold:#ffc83d; --ink:#1b1712; --panel:#221d17ee; --line:#5c4b37; }
+  * { box-sizing:border-box; }
+  html,body { margin:0; height:100%; background:#0d0b09; color:#f4ead8; font-family:system-ui,"Segoe UI",Roboto,sans-serif; overflow:hidden; user-select:none; }
+  #wrap { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); aspect-ratio:16/9; width:min(100vw, calc(100vh * 16 / 9)); }
+  canvas { position:absolute; inset:0; width:100%; height:100%; display:block; cursor:none; }
+  .ov { position:absolute; inset:0; display:none; align-items:center; justify-content:center; background:#0008; backdrop-filter:blur(3px); }
+  .ov.show { display:flex; }
+  .box { background:var(--panel); border:2px solid var(--line); border-radius:16px; padding:24px 30px; max-width:88%; max-height:90%; overflow:auto; text-align:center; box-shadow:0 20px 60px #000a; }
+  h1 { font-size:clamp(28px,5vw,64px); margin:0 0 6px; color:var(--gold); text-shadow:0 4px 0 #8a5a12, 0 8px 20px #000; letter-spacing:1px; }
+  h2 { margin:0 0 14px; color:var(--gold); font-size:clamp(20px,2.6vw,34px); }
+  p { margin:6px 0; line-height:1.45; }
+  button { font:inherit; font-weight:700; border:0; border-radius:10px; padding:10px 18px; margin:5px; cursor:pointer; background:var(--gold); color:var(--ink); box-shadow:0 4px 0 #9b6b14; }
+  button:hover { filter:brightness(1.08); }
+  button:active { transform:translateY(2px); box-shadow:0 2px 0 #9b6b14; }
+  button.sec { background:#4a3d2e; color:#f4ead8; box-shadow:0 4px 0 #2a2119; }
+  button:disabled { opacity:.45; cursor:default; transform:none; }
+  .sub { opacity:.8; font-size:.95em; }
+  #levels { display:grid; grid-template-columns:repeat(5, 92px); gap:10px; justify-content:center; margin:10px 0 16px; }
+  #levels button { margin:0; padding:10px 4px; display:flex; flex-direction:column; align-items:center; }
+  #levels .stars { font-size:13px; letter-spacing:1px; color:#7a4e0c; }
+  #shopgrid { display:grid; grid-template-columns:repeat(auto-fill, minmax(230px,1fr)); gap:12px; margin:12px 0; text-align:left; width:min(1000px, 80vw); }
+  .card { background:#2f271f; border:1px solid var(--line); border-radius:12px; padding:12px 14px; display:flex; flex-direction:column; gap:4px; }
+  .card b { color:var(--gold); font-size:1.05em; }
+  .card .lvl { font-size:.85em; opacity:.8; }
+  .card .pips { letter-spacing:2px; color:var(--gold); }
+  .card button { margin:6px 0 0; }
+  .money { color:var(--gold); font-weight:800; }
+  #pauseBtn { position:absolute; right:1.2%; top:1.4%; padding:6px 12px; margin:0; font-size:clamp(11px,1.2vw,16px); }
+  .keys { text-align:left; display:inline-block; margin:8px 0; }
+  .keys kbd { background:#4a3d2e; border-radius:5px; padding:1px 7px; border-bottom:2px solid #2a2119; font-family:inherit; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="c"></canvas>
+  <button id="pauseBtn" class="sec">❚❚ Pause</button>
+
+  <div class="ov show" id="ovMenu"><div class="box">
+    <h1>KARTOFFEL-SCHÄLEREI</h1>
+    <p class="sub">Ein riesiger Berg. Ein Messer. Und viel zu viele Kartoffeln.</p>
+    <p>Kontostand: <span class="money" id="menuMoney"></span></p>
+    <div style="margin-top:12px">
+      <button id="bPlay">▶ Spielen</button>
+      <button class="sec" id="bMap">Level-Karte</button>
+      <button class="sec" id="bShop">Shop</button>
+      <button class="sec" id="bHelp">Anleitung</button>
+    </div>
+    <div>
+      <button class="sec" id="bSound">🔊 Ton an</button>
+      <button class="sec" id="bReset">Spielstand löschen</button>
+    </div>
+  </div></div>
+
+  <div class="ov" id="ovHelp"><div class="box">
+    <h2>So geht's</h2>
+    <p>1. Klick auf den <b>Kartoffelberg</b> → Kartoffeln landen im <b>Eimer</b>.</p>
+    <p>2. Klick auf den <b>Eimer</b> → eine Kartoffel kommt aufs <b>Brett</b>.</p>
+    <p>3. <b>Maustaste gedrückt halten und über die Kartoffel ziehen</b> → schälen!</p>
+    <p>4. Dunkle <b>Augen</b> nach dem Schälen anklicken, um sie auszustechen.</p>
+    <p>5. Ab 80&nbsp;% geschält: <b>Abliefern</b> ins Reservoir → Geld. Je sauberer, desto mehr.</p>
+    <p>6. <b>Faule</b> (grünlich-schwarze) Kartoffeln in den <b>Müll</b> werfen – nicht abliefern!</p>
+    <p>7. Schaff die Quote vor Ablauf der Zeit. Mit dem Geld kaufst du im Shop bessere Messer, größere Eimer, Förderbänder und <b>Schälmaschinen</b>, die für dich arbeiten.</p>
+    <div class="keys">
+      <kbd>Q</kbd> Kartoffel vom Berg &nbsp; <kbd>W</kbd> Eimer → Brett &nbsp; <kbd>Leertaste</kbd> Abliefern &nbsp; <kbd>X</kbd> Wegwerfen &nbsp; <kbd>Esc</kbd> Pause
+    </div><br>
+    <button id="bHelpBack">Verstanden</button>
+  </div></div>
+
+  <div class="ov" id="ovMap"><div class="box">
+    <h2>Level-Karte</h2>
+    <div id="levels"></div>
+    <button class="sec" id="bMapShop">Shop</button>
+    <button class="sec" id="bMapBack">Zurück</button>
+  </div></div>
+
+  <div class="ov" id="ovShop"><div class="box">
+    <h2>Shop</h2>
+    <p>Kontostand: <span class="money" id="shopMoney"></span></p>
+    <div id="shopgrid"></div>
+    <button id="bShopBack">Fertig</button>
+  </div></div>
+
+  <div class="ov" id="ovEnd"><div class="box">
+    <h2 id="endTitle"></h2>
+    <div id="endStars" style="font-size:48px;color:var(--gold);letter-spacing:6px"></div>
+    <div id="endText"></div>
+    <div style="margin-top:12px">
+      <button id="bEndNext">Weiter</button>
+      <button class="sec" id="bEndRetry">Nochmal</button>
+      <button class="sec" id="bEndShop">Shop</button>
+      <button class="sec" id="bEndMenu">Menü</button>
+    </div>
+  </div></div>
+
+  <div class="ov" id="ovPause"><div class="box">
+    <h2>Pause</h2>
+    <button id="bResume">Weiter</button>
+    <button class="sec" id="bPauseRestart">Level neu starten</button>
+    <button class="sec" id="bPauseMenu">Aufgeben &amp; Menü</button>
+  </div></div>
+</div>
+
+<script>
+'use strict';
+// ---------- Grundgerüst ----------
+const W = 1280, H = 720;
+const cv = document.getElementById('c');
+const ctx = cv.getContext('2d');
+const $ = id => document.getElementById(id);
+let dpr = 1;
+function resize() {
+  const r = cv.getBoundingClientRect();
+  dpr = Math.min(2, (r.width * (window.devicePixelRatio || 1)) / W);
+  cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+}
+window.addEventListener('resize', resize);
+
+const rand = (a, b) => a + Math.random() * (b - a);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+function mulberry(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const euro = v => Math.round(v).toLocaleString('de-DE') + ' €';
+
+// ---------- Spielstand ----------
+const UPGRADES = {
+  messer:   { name:'Schälmesser',     desc:'Breitere Klinge – schält mehr pro Zug.',          vals:[16,22,29,37,46],    prices:[60,180,450,1000] },
+  eimer:    { name:'Eimer',           desc:'Mehr Platz für Kartoffeln.',                      vals:[3,5,8,12,18],       prices:[40,120,300,700] },
+  schaufel: { name:'Schaufel',        desc:'Mehr Kartoffeln pro Klick auf den Berg.',         vals:[1,2,3,5],           prices:[150,450,1200] },
+  vertrag:  { name:'Liefervertrag',   desc:'Mehr Geld pro Kartoffel.',                        vals:[1,1.25,1.5,2,2.6],  prices:[100,350,900,2200] },
+  thermos:  { name:'Thermoskanne Kaffee', desc:'Mehr Zeit pro Level.',                        vals:[0,15,30,45],        prices:[80,250,600] },
+  band:     { name:'Förderband',      desc:'Füllt den Eimer automatisch vom Berg (Sekunden pro Kartoffel).', vals:[0,4,2.5,1.4,0.8], prices:[250,600,1400,3000] },
+  maschinen:{ name:'Schälmaschine',   desc:'Schält Kartoffeln aus dem Eimer selbstständig (70 % Lohn).', vals:[0,1,2,3], prices:[400,1200,3000] },
+  tempo:    { name:'Maschinen-Motor', desc:'Schälmaschinen arbeiten schneller (Sekunden pro Kartoffel).', vals:[9,6,4,2.5,1.5], prices:[500,1300,3000,6500] },
+};
+const fmtVal = (k, v) => ({ messer:v+' px', eimer:v+' Stück', schaufel:v+' pro Klick', vertrag:'×'+v, thermos:'+'+v+' s', band: v ? v+' s' : 'keins', maschinen:v+' Stück', tempo:v+' s' })[k];
+
+const SAVE_KEY = 'kartoffel-schaelerei-v1';
+function freshSave() { const u = {}; for (const k in UPGRADES) u[k] = 0; return { money:0, unlocked:1, stars:{}, up:u, sound:true, total:0 }; }
+let save = freshSave();
+try { const s = JSON.parse(localStorage.getItem(SAVE_KEY)); if (s && s.up) { save = Object.assign(freshSave(), s); save.up = Object.assign(freshSave().up, s.up); } } catch (e) {}
+function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) {} }
+const U = k => UPGRADES[k].vals[save.up[k]];
+
+// ---------- Ton ----------
+let ac = null, lastScrape = 0;
+function audio() { if (!save.sound) return null; if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; } } if (ac.state === 'suspended') ac.resume(); return ac; }
+function tone(freq, dur, type = 'sine', vol = 0.15, slide = 0) {
+  const a = audio(); if (!a) return;
+  const o = a.createOscillator(), g = a.createGain(), t = a.currentTime;
+  o.type = type; o.frequency.setValueAtTime(freq, t); if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, freq + slide), t + dur);
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  o.connect(g).connect(a.destination); o.start(t); o.stop(t + dur);
+}
+function noise(dur, vol = 0.12, freq = 2500) {
+  const a = audio(); if (!a) return;
+  const n = Math.floor(a.sampleRate * dur), b = a.createBuffer(1, n, a.sampleRate), d = b.getChannelData(0);
+  for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n);
+  const s = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain();
+  f.type = 'bandpass'; f.frequency.value = freq; f.Q.value = 1.2; g.gain.value = vol;
+  s.buffer = b; s.connect(f).connect(g).connect(a.destination); s.start();
+}
+const sfx = {
+  scrape() { const t = performance.now(); if (t - lastScrape > 70) { lastScrape = t; noise(0.07, 0.09, rand(1800, 3600)); } },
+  pop() { tone(rand(380, 460), 0.09, 'triangle', 0.18, 200); },
+  thud() { tone(140, 0.12, 'sine', 0.25, -60); },
+  coin() { tone(988, 0.08, 'square', 0.06); setTimeout(() => tone(1319, 0.18, 'square', 0.06), 70); },
+  perfect() { [784, 988, 1175, 1568].forEach((f, i) => setTimeout(() => tone(f, 0.15, 'triangle', 0.12), i * 70)); },
+  bad() { tone(160, 0.3, 'sawtooth', 0.1, -80); },
+  dig() { noise(0.12, 0.18, 900); tone(300, 0.08, 'triangle', 0.1, -150); },
+  trash() { noise(0.25, 0.15, 400); },
+  win() { [523, 659, 784, 1047, 1319].forEach((f, i) => setTimeout(() => tone(f, 0.25, 'triangle', 0.13), i * 110)); },
+  lose() { [392, 330, 262, 196].forEach((f, i) => setTimeout(() => tone(f, 0.3, 'sawtooth', 0.07), i * 160)); },
+  machine() { tone(620, 0.06, 'square', 0.04); },
+};
+
+// ---------- Layout ----------
+const MOUNT = { x:0, y:60, w:370, h:430 };
+const BUCKET = { x:190, y:612, w:180, h:150 }; // Mitte
+const BOARD = { x:395, y:120, w:520, h:530, cx:655, cy:385 };
+const BTN_TRASH = { x:410, y:664, w:200, h:46, label:'🗑 Wegwerfen (X)' };
+const BTN_DELIVER = { x:700, y:664, w:200, h:46, label:'Abliefern ➜' };
+const RES = { x:935, y:70, w:330, h:300, hatch:{ x:1040, y:268, w:120, h:70 } };
+const MACH = { x:935, y:395, w:330, h:310 };
+const inRect = (p, r) => p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h;
+const bucketRect = { x:BUCKET.x - 95, y:BUCKET.y - 80, w:190, h:160 };
+
+// ---------- Kartoffeln ----------
+function levelCfg(n) {
+  return {
+    quota: 4 + Math.floor(n * 1.7),
+    time: 70 + Math.min(n, 25) * 5,
+    rotten: n <= 2 ? 0 : Math.min(0.06 + n * 0.012, 0.3),
+    eyes: Math.min(Math.floor((n + 1) / 2), 6),
+    gold: n >= 3 ? 0.05 : 0,
+    big: Math.min(0.15 + n * 0.04, 0.6),
+    giant: n >= 8 ? Math.min(0.04 + (n - 8) * 0.02, 0.25) : 0,
+    pay: 1 + (n - 1) * 0.12,
+  };
+}
+function newPotatoData(cfg) {
+  const r = Math.random();
+  const size = Math.random() < cfg.giant ? 3 : Math.random() < cfg.big ? 2 : r < 0.35 ? 0 : 1;
+  const rotten = Math.random() < cfg.rotten;
+  const gold = !rotten && Math.random() < cfg.gold;
+  return { seed: (Math.random() * 1e9) | 0, size, rotten, gold, eyes: Math.floor(Math.random() * (cfg.eyes + 1)) };
+}
+const SIZE_R = [100, 126, 150, 172], SIZE_PAY = [0.8, 1, 1.45, 2.1], SIZE_NAME = ['klein', 'mittel', 'groß', 'RIESIG'];
+
+function peelColors(d) {
+  if (d.gold) return ['#f7c948', '#c9901d', '#ffe9a0'];
+  return ['#b9824a', '#8c5a2c', '#d9a46b'];
+}
+// kleine Kartoffel (Berg, Eimer, Flug)
+function drawMini(c, x, y, s, d, rot = 0) {
+  const rng = mulberry(d.seed);
+  const [base, dark, light] = peelColors(d);
+  c.save(); c.translate(x, y); c.rotate(rot + rng() * 3);
+  c.beginPath(); c.ellipse(0, 0, s * (1.15 + rng() * 0.25), s * (0.8 + rng() * 0.15), 0, 0, Math.PI * 2);
+  const g = c.createRadialGradient(-s * 0.4, -s * 0.4, s * 0.1, 0, 0, s * 1.4);
+  g.addColorStop(0, light); g.addColorStop(0.55, d.peeled ? '#f3e2a8' : base); g.addColorStop(1, d.peeled ? '#d8bf72' : dark);
+  if (d.peeled) { g.addColorStop(0, '#fff6cf'); }
+  c.fillStyle = g; c.fill();
+  if (d.rotten && !d.peeled) { c.fillStyle = '#2f3a1c'; for (let i = 0; i < 3; i++) { c.beginPath(); c.arc((rng() - 0.5) * s, (rng() - 0.5) * s * 0.8, s * (0.2 + rng() * 0.2), 0, 7); c.fill(); } }
+  c.fillStyle = '#5e3a1a88'; for (let i = 0; i < 4; i++) { c.beginPath(); c.arc((rng() - 0.5) * s * 1.6, (rng() - 0.5) * s, 1 + s * 0.06, 0, 7); c.fill(); }
+  c.restore();
+}
+
+// große Kartoffel auf dem Brett
+class BoardPotato {
+  constructor(d) {
+    this.d = d; const rng = mulberry(d.seed);
+    const R = SIZE_R[d.size];
+    this.R = R;
+    const rx = R * (1.15 + rng() * 0.2), ry = R * (0.78 + rng() * 0.12), rot = (rng() - 0.5) * 0.6;
+    const p1 = rng() * 6, p2 = rng() * 6, p3 = rng() * 6;
+    this.pts = [];
+    for (let i = 0; i < 80; i++) {
+      const t = i / 80 * Math.PI * 2;
+      const n = 1 + 0.06 * Math.sin(3 * t + p1) + 0.04 * Math.sin(5 * t + p2) + 0.03 * Math.sin(2 * t + p3);
+      const x = Math.cos(t) * rx * n, y = Math.sin(t) * ry * n;
+      this.pts.push([x * Math.cos(rot) - y * Math.sin(rot), x * Math.sin(rot) + y * Math.cos(rot)]);
+    }
+    this.half = Math.ceil(Math.max(rx, ry) * 1.15) + 6;
+    const S = this.half * 2;
+    this.path = new Path2D();
+    this.pts.forEach(([x, y], i) => i ? this.path.lineTo(x + this.half, y + this.half) : this.path.moveTo(x + this.half, y + this.half));
+    this.path.closePath();
+    // Schale
+    this.peel = document.createElement('canvas'); this.peel.width = this.peel.height = S;
+    const pc = this.peel.getContext('2d');
+    const [base, dark, light] = peelColors(d);
+    pc.save(); pc.clip(this.path);
+    pc.fillStyle = base; pc.fillRect(0, 0, S, S);
+    for (let i = 0; i < 900; i++) { pc.fillStyle = rng() < 0.5 ? dark + '55' : light + '44'; pc.beginPath(); pc.arc(rng() * S, rng() * S, 1 + rng() * 3.5, 0, 7); pc.fill(); }
+    for (let i = 0; i < 40; i++) { pc.strokeStyle = dark + '66'; pc.lineWidth = 1; pc.beginPath(); const x = rng() * S, y = rng() * S; pc.moveTo(x, y); pc.quadraticCurveTo(x + rng() * 20 - 10, y + rng() * 20 - 10, x + rng() * 30 - 15, y + rng() * 30 - 15); pc.stroke(); }
+    if (d.rotten) {
+      this.rotSpots = [];
+      for (let i = 0; i < 5 + rng() * 4; i++) {
+        const a = rng() * 6.28, r = rng() * 0.7;
+        const sx = Math.cos(a) * rx * r + this.half, sy = Math.sin(a) * ry * r + this.half, sr = R * (0.12 + rng() * 0.22);
+        this.rotSpots.push([sx, sy, sr]);
+        const g = pc.createRadialGradient(sx, sy, 0, sx, sy, sr);
+        g.addColorStop(0, '#1d2410'); g.addColorStop(0.6, '#3c4a1ccc'); g.addColorStop(1, '#3c4a1c00');
+        pc.fillStyle = g; pc.beginPath(); pc.arc(sx, sy, sr, 0, 7); pc.fill();
+      }
+    }
+    pc.restore();
+    this.pc = pc;
+    // Raster zur Fortschrittsmessung
+    const tc = document.createElement('canvas').getContext('2d');
+    this.grid = []; const step = 7;
+    for (let y = step / 2; y < S; y += step) for (let x = step / 2; x < S; x += step) if (tc.isPointInPath(this.path, x, y)) this.grid.push({ x, y, on: true });
+    this.left = this.grid.length; this.total = this.grid.length;
+    // Augen
+    this.eyes = [];
+    for (let i = 0; i < d.eyes; i++) {
+      for (let tries = 0; tries < 30; tries++) {
+        const a = rng() * 6.28, r = 0.2 + rng() * 0.55;
+        const ex = Math.cos(a) * rx * r + this.half, ey = Math.sin(a) * ry * r + this.half;
+        if (this.eyes.every(e => Math.hypot(e.x - ex, e.y - ey) > 40)) { this.eyes.push({ x: ex, y: ey, r: 6 + rng() * 4, dug: false, rot: rng() * 6 }); break; }
+      }
+    }
+    for (const e of this.eyes) { pc.fillStyle = '#4a2c12'; pc.beginPath(); pc.ellipse(e.x, e.y, e.r * 0.8, e.r * 0.5, e.rot, 0, 7); pc.fill(); }
+    this.x = BOARD.cx; this.y = BOARD.cy; this.spawn = 0; this.wobble = 0;
+  }
+  get progress() { return 1 - this.left / this.total; }
+  get eyesLeft() { return this.eyes.filter(e => !e.dug).length; }
+  toLocal(p) { return { x: p.x - this.x + this.half, y: p.y - this.y + this.half }; }
+  cut(a, b, rad) {
+    const A = this.toLocal(a), B = this.toLocal(b);
+    const pc = this.pc;
+    pc.save(); pc.globalCompositeOperation = 'destination-out';
+    pc.lineCap = 'round'; pc.lineWidth = rad * 2; pc.beginPath(); pc.moveTo(A.x, A.y); pc.lineTo(B.x + 0.01, B.y); pc.stroke(); pc.restore();
+    const dx = B.x - A.x, dy = B.y - A.y, L = dx * dx + dy * dy || 1;
+    let removed = 0;
+    for (const g of this.grid) {
+      if (!g.on) continue;
+      const t = clamp(((g.x - A.x) * dx + (g.y - A.y) * dy) / L, 0, 1);
+      const ex = A.x + dx * t - g.x, ey = A.y + dy * t - g.y;
+      if (ex * ex + ey * ey <= rad * rad) { g.on = false; removed++; }
+    }
+    this.left -= removed;
+    return removed;
+  }
+  peeledAt(lx, ly) { // ist die Schale an dieser Stelle weg?
+    let best = null, bd = 1e9;
+    for (const g of this.grid) { const d = (g.x - lx) ** 2 + (g.y - ly) ** 2; if (d < bd) { bd = d; best = g; } }
+    return best && !best.on;
+  }
+  draw(c) {
+    const s = Math.min(1, this.spawn * 4), sc = 0.6 + 0.4 * (1 - Math.pow(1 - s, 3)) + Math.sin(this.wobble * 30) * this.wobble * 0.08;
+    c.save(); c.translate(this.x, this.y); c.scale(sc, sc); c.translate(-this.half, -this.half);
+    // Schatten
+    c.save(); c.translate(10, 16); c.fillStyle = '#0005'; c.filter = 'blur(8px)'; c.fill(this.path); c.restore();
+    // Fruchtfleisch
+    const R = this.R, h = this.half;
+    let g = c.createRadialGradient(h - R * 0.4, h - R * 0.4, R * 0.1, h, h, R * 1.5);
+    if (this.d.gold) { g.addColorStop(0, '#fff7d0'); g.addColorStop(1, '#f2c64a'); }
+    else { g.addColorStop(0, '#fff6d2'); g.addColorStop(0.7, '#f2dc93'); g.addColorStop(1, '#d8b866'); }
+    c.fillStyle = g; c.fill(this.path);
+    if (this.rotSpots) for (const [x, y, r] of this.rotSpots) {
+      const gg = c.createRadialGradient(x, y, 0, x, y, r * 0.8); gg.addColorStop(0, '#4b4a2c'); gg.addColorStop(1, '#6b6a3c00');
+      c.fillStyle = gg; c.beginPath(); c.arc(x, y, r * 0.8, 0, 7); c.fill();
+    }
+    for (const e of this.eyes) {
+      if (e.dug) { c.fillStyle = '#e3c97e'; c.beginPath(); c.arc(e.x, e.y, e.r + 2, 0, 7); c.fill(); c.strokeStyle = '#c4a75a'; c.lineWidth = 2; c.stroke(); }
+      else { c.fillStyle = '#3b230d'; c.beginPath(); c.ellipse(e.x, e.y, e.r, e.r * 0.7, e.rot, 0, 7); c.fill(); c.fillStyle = '#b6c46a'; c.beginPath(); c.arc(e.x + 2, e.y - 2, 2.5, 0, 7); c.fill(); }
+    }
+    c.drawImage(this.peel, 0, 0);
+    // Glanz/Volumen
+    g = c.createRadialGradient(h - R * 0.45, h - R * 0.5, 0, h, h, R * 1.4);
+    g.addColorStop(0, '#ffffff38'); g.addColorStop(0.45, '#ffffff00'); g.addColorStop(1, '#00000055');
+    c.fillStyle = g; c.fill(this.path);
+    c.restore();
+  }
+}
+
+// ---------- Hintergrund (einmal vorrendern) ----------
+let bgCanvas = null;
+function buildBackground() {
+  const b = document.createElement('canvas'); b.width = W; b.height = H;
+  const c = b.getContext('2d'); const rng = mulberry(42);
+  // Himmel + Schneeberge (links)
+  let g = c.createLinearGradient(0, 0, 0, 500); g.addColorStop(0, '#7f9fc0'); g.addColorStop(1, '#d9e3ec');
+  c.fillStyle = g; c.fillRect(0, 0, 390, H);
+  c.fillStyle = '#9fb0c2'; c.beginPath(); c.moveTo(0, 300); c.lineTo(70, 170); c.lineTo(140, 250); c.lineTo(230, 130); c.lineTo(330, 260); c.lineTo(390, 200); c.lineTo(390, 500); c.lineTo(0, 500); c.fill();
+  c.fillStyle = '#f2f6fa'; c.beginPath(); c.moveTo(48, 210); c.lineTo(70, 170); c.lineTo(95, 205); c.lineTo(80, 200); c.lineTo(70, 215); c.fill();
+  c.beginPath(); c.moveTo(200, 172); c.lineTo(230, 130); c.lineTo(262, 175); c.lineTo(242, 168); c.lineTo(228, 185); c.fill();
+  // Tannen
+  for (let i = 0; i < 9; i++) { const x = rng() * 380, y = 330 + rng() * 60, s = 18 + rng() * 22; c.fillStyle = '#2f4a3d'; c.beginPath(); c.moveTo(x, y - s * 2.2); c.lineTo(x - s * 0.7, y); c.lineTo(x + s * 0.7, y); c.fill(); c.fillStyle = '#e8eef4'; c.beginPath(); c.moveTo(x, y - s * 2.2); c.lineTo(x - s * 0.25, y - s * 1.4); c.lineTo(x + s * 0.25, y - s * 1.4); c.fill(); }
+  c.fillStyle = '#e9eef3'; c.fillRect(0, 470, 390, 250);
+  // Kartoffelberg
+  const pile = [];
+  for (let i = 0; i < 520; i++) {
+    const y = 115 + Math.pow(rng(), 0.6) * 380; const half = (y - 105) * 0.52;
+    const x = 185 + (rng() * 2 - 1) * half; pile.push([x, y, 8 + rng() * 9]);
+  }
+  pile.sort((a, b) => a[1] - b[1]);
+  for (const [x, y, s] of pile) drawMini(c, x, y, s, { seed: (rng() * 1e9) | 0, rotten: rng() < 0.03 });
+  // Küche (Mitte + rechts)
+  g = c.createLinearGradient(390, 0, 390, H); g.addColorStop(0, '#2c3b33'); g.addColorStop(1, '#1b231f');
+  c.fillStyle = g; c.fillRect(390, 0, W - 390, H);
+  c.strokeStyle = '#ffffff0a'; c.lineWidth = 2;
+  for (let y = 20; y < 160; y += 34) for (let x = 390 + (y / 34 % 2) * 30; x < W; x += 60) c.strokeRect(x, y, 60, 34);
+  // Arbeitsplatte
+  g = c.createLinearGradient(0, 95, 0, H); g.addColorStop(0, '#80868a'); g.addColorStop(1, '#4a4f53');
+  c.fillStyle = g; c.fillRect(380, 98, 545, H - 98);
+  c.fillStyle = '#aab0b4'; c.fillRect(380, 98, 545, 6);
+  // Brett
+  c.save(); c.shadowColor = '#0008'; c.shadowBlur = 25; c.shadowOffsetY = 10;
+  g = c.createLinearGradient(BOARD.x, 0, BOARD.x + BOARD.w, 0); g.addColorStop(0, '#c48a52'); g.addColorStop(0.5, '#d9a066'); g.addColorStop(1, '#b97f48');
+  c.fillStyle = g; c.beginPath(); c.roundRect(BOARD.x, BOARD.y, BOARD.w, BOARD.h, 18); c.fill(); c.restore();
+  c.strokeStyle = '#a36d3a55'; c.lineWidth = 1.5;
+  for (let i = 0; i < 26; i++) { const y = BOARD.y + 10 + rng() * (BOARD.h - 20); c.beginPath(); c.moveTo(BOARD.x + 10, y); for (let x = BOARD.x + 10; x < BOARD.x + BOARD.w - 10; x += 20) c.lineTo(x, y + Math.sin(x * 0.02 + i) * 3); c.stroke(); }
+  for (let i = 0; i < 40; i++) { c.strokeStyle = '#7a4d2433'; c.beginPath(); const x = BOARD.x + 20 + rng() * (BOARD.w - 40), y = BOARD.y + 20 + rng() * (BOARD.h - 40); c.moveTo(x, y); c.lineTo(x + rng() * 50 - 25, y + rng() * 10 - 5); c.stroke(); }
+  // Reservoir-Paneel
+  c.save(); c.shadowColor = '#000a'; c.shadowBlur = 20;
+  g = c.createLinearGradient(0, RES.y, 0, RES.y + RES.h); g.addColorStop(0, '#3e5a4c'); g.addColorStop(1, '#253a30');
+  c.fillStyle = g; c.beginPath(); c.roundRect(RES.x, RES.y, RES.w, RES.h, 12); c.fill(); c.restore();
+  c.fillStyle = '#9ba39e'; for (const [x, y] of [[RES.x + 12, RES.y + 12], [RES.x + RES.w - 12, RES.y + 12], [RES.x + 12, RES.y + RES.h - 12], [RES.x + RES.w - 12, RES.y + RES.h - 12]]) { c.beginPath(); c.arc(x, y, 5, 0, 7); c.fill(); }
+  c.fillStyle = '#1b2721'; c.beginPath(); c.roundRect(RES.x + 70, RES.y + 30, 190, 58, 6); c.fill();
+  c.fillStyle = '#d6e6dc'; c.font = 'bold 20px system-ui'; c.textAlign = 'center'; c.fillText('RESERVOIR Nr. 5', RES.x + 165, RES.y + 56);
+  c.font = '12px system-ui'; c.fillStyle = '#a8bdb0'; c.fillText('nur geschälte Ware', RES.x + 165, RES.y + 76);
+  // Luke
+  const hz = RES.hatch;
+  c.fillStyle = '#111'; c.beginPath(); c.roundRect(hz.x, hz.y, hz.w, hz.h, 8); c.fill();
+  c.strokeStyle = '#8b958f'; c.lineWidth = 4; c.stroke();
+  c.strokeStyle = '#ffffff22'; c.lineWidth = 2; for (let x = hz.x + 14; x < hz.x + hz.w; x += 16) { c.beginPath(); c.moveTo(x, hz.y + 6); c.lineTo(x, hz.y + hz.h - 6); c.stroke(); }
+  // Maschinenbereich
+  c.fillStyle = '#151c18'; c.beginPath(); c.roundRect(MACH.x, MACH.y, MACH.w, MACH.h, 12); c.fill();
+  c.strokeStyle = '#ffffff14'; c.lineWidth = 2; c.stroke();
+  bgCanvas = b;
+}
+
+// ---------- Spielzustand ----------
+let state = 'menu'; // menu | play | pause | end
+let G = null;
+const mouse = { x: 0, y: 0, down: false, last: null, over: false };
+const particles = [], popups = [], flyers = [];
+
+function startLevel(n) {
+  const cfg = levelCfg(n);
+  G = {
+    level: n, cfg, time: cfg.time + U('thermos'), maxTime: cfg.time + U('thermos'),
+    done: 0, earned: 0, bucket: [], board: null, streak: 0, perfects: 0, rottenOk: 0,
+    beltT: 0, beltAnim: 0, machines: Array.from({ length: U('maschinen') }, () => ({ p: null, t: 0, anim: 0 })),
+    shake: 0, msg: null, lights: 0, hatchOpen: 0,
+  };
+  particles.length = popups.length = flyers.length = 0;
+  for (let i = 0; i < Math.min(2, U('eimer')); i++) G.bucket.push(newPotatoData(cfg));
+  state = 'play'; showOv(null);
+  say(`Level ${n}: ${cfg.quota} Kartoffeln schälen!`, 2.5);
+}
+function say(text, dur = 1.6, color = '#fff') { G.msg = { text, t: dur, color }; }
+function popup(x, y, text, color = '#ffc83d', size = 28) { popups.push({ x, y, text, color, size, t: 0 }); }
+
+function grabFromMountain() {
+  if (state !== 'play') return;
+  const cap = U('eimer'), n = U('schaufel');
+  const pending = flyers.filter(f => f.kind === 'toBucket').length;
+  let added = 0;
+  for (let i = 0; i < n && G.bucket.length + pending + added < cap; i++) {
+    const d = newPotatoData(G.cfg);
+    flyers.push({ kind: 'toBucket', d, fx: mouse.over && inRect(mouse, MOUNT) ? mouse.x : rand(120, 250), fy: mouse.over && inRect(mouse, MOUNT) ? mouse.y : rand(200, 400), tx: BUCKET.x + rand(-40, 40), ty: BUCKET.y - 40, t: -i * 0.08, dur: 0.45, s: 16 });
+    added++;
+  }
+  if (added) sfx.pop(); else { say('Eimer ist voll!', 1); sfx.bad(); }
+}
+function bucketToBoard() {
+  if (state !== 'play') return;
+  if (G.board) { say('Erst die Kartoffel auf dem Brett fertig machen!', 1.2); return; }
+  if (!G.bucket.length) { say('Eimer ist leer – klick auf den Berg!', 1.3); sfx.bad(); return; }
+  const d = G.bucket.pop();
+  flyers.push({ kind: 'toBoard', d, fx: BUCKET.x, fy: BUCKET.y - 40, tx: BOARD.cx, ty: BOARD.cy, t: 0, dur: 0.3, s: 20 });
+  sfx.pop();
+}
+function quality() {
+  const b = G.board; if (!b) return 0;
+  const p = b.progress;
+  let q = lerp(0.6, 1, clamp((p - 0.8) / 0.19, 0, 1)) - 0.15 * b.eyesLeft;
+  return Math.max(0.1, q);
+}
+function canDeliver() { return G.board && G.board.spawn > 0.25 && G.board.progress >= 0.8; }
+function deliver() {
+  if (state !== 'play' || !G.board) return;
+  const b = G.board;
+  if (!canDeliver()) { say(`Noch nicht genug geschält (${Math.floor(b.progress * 100)} % / 80 %)`, 1.3); sfx.bad(); return; }
+  G.board = null;
+  flyers.push({ kind: 'toRes', d: Object.assign({}, b.d, { peeled: true }), fx: b.x, fy: b.y, tx: RES.hatch.x + RES.hatch.w / 2, ty: RES.hatch.y + RES.hatch.h / 2, t: 0, dur: 0.4, s: b.R * 0.3,
+    onDone: () => {
+      G.hatchOpen = 1;
+      if (b.d.rotten) {
+        const pen = Math.round(8 * G.cfg.pay);
+        save.money = Math.max(0, save.money - pen); G.earned -= pen; G.streak = 0; G.shake = 0.5; G.lights = -1.5;
+        popup(1100, 230, `Igitt! Faul! −${pen} €`, '#ff6b5b'); sfx.bad(); return;
+      }
+      const perfect = b.progress >= 0.985 && b.eyesLeft === 0;
+      const q = Math.max(0.1, lerp(0.6, 1, clamp((b.progress - 0.8) / 0.19, 0, 1)) - 0.15 * b.eyesLeft);
+      G.streak = q >= 0.95 ? G.streak + 1 : 0;
+      const streakMul = 1 + Math.min(G.streak - 1, 5) * 0.1 * (G.streak > 0);
+      let pay = 5 * SIZE_PAY[b.d.size] * (b.d.gold ? 5 : 1) * U('vertrag') * G.cfg.pay * q * streakMul * (perfect ? 1.25 : 1);
+      pay = Math.max(1, Math.round(pay));
+      save.money += pay; save.total++; G.earned += pay; G.done++; G.lights = 1.5;
+      if (perfect) { G.perfects++; popup(1100, 200, 'PERFEKT!', '#7dff9a', 34); sfx.perfect(); } else sfx.coin();
+      popup(1100, 240, `+${pay} €${G.streak > 1 ? '  Serie ×' + G.streak : ''}`);
+      checkWin();
+    } });
+  sfx.thud();
+}
+function trash() {
+  if (state !== 'play' || !G.board) return;
+  const b = G.board; G.board = null;
+  for (let i = 0; i < 14; i++) particles.push({ x: b.x + rand(-40, 40), y: b.y + rand(-30, 30), vx: rand(-200, 200), vy: rand(-300, -50), r: 0, vr: rand(-8, 8), s: rand(6, 12), life: 1.2, col: b.d.rotten ? '#3c4a1c' : '#b9824a', kind: 'chunk' });
+  if (b.d.rotten) { G.rottenOk++; popup(BTN_TRASH.x + 100, BTN_TRASH.y - 20, 'Gut aussortiert!', '#7dff9a', 22); }
+  else popup(BTN_TRASH.x + 100, BTN_TRASH.y - 20, 'Schade drum…', '#ccc', 20);
+  sfx.trash();
+}
+function checkWin() {
+  if (G.done >= G.cfg.quota && state === 'play') {
+    const frac = G.time / G.maxTime;
+    const stars = frac >= 0.4 ? 3 : frac >= 0.2 ? 2 : 1;
+    const bonus = Math.round((15 + G.level * 12) * stars * 0.5 + G.perfects * 3);
+    save.money += bonus; G.earned += bonus;
+    save.stars[G.level] = Math.max(save.stars[G.level] || 0, stars);
+    save.unlocked = Math.max(save.unlocked, G.level + 1);
+    persist(); sfx.win();
+    setTimeout(() => endScreen(true, stars, bonus), 700);
+    state = 'end';
+  }
+}
+function endScreen(won, stars, bonus) {
+  $('endTitle').textContent = won ? `Level ${G.level} geschafft!` : 'Zeit abgelaufen!';
+  $('endStars').textContent = won ? '★'.repeat(stars) + '☆'.repeat(3 - stars) : '';
+  $('endText').innerHTML = won
+    ? `<p>${G.done} Kartoffeln geschält · ${G.perfects}× perfekt · ${G.rottenOk} faule aussortiert</p><p>Level-Bonus: <span class="money">${euro(bonus)}</span></p><p>Verdient in diesem Level: <span class="money">${euro(G.earned)}</span></p><p>Kontostand: <span class="money">${euro(save.money)}</span></p>`
+    : `<p>${G.done} / ${G.cfg.quota} geschafft. Das verdiente Geld (<span class="money">${euro(G.earned)}</span>) darfst du behalten.</p><p class="sub">Tipp: Im Shop gibt's bessere Messer, größere Eimer und Maschinen!</p><p>Kontostand: <span class="money">${euro(save.money)}</span></p>`;
+  $('bEndNext').style.display = won ? '' : 'none';
+  showOv('ovEnd');
+}
+
+// ---------- Eingabe ----------
+function toGame(e) { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) / r.width * W, y: (e.clientY - r.top) / r.height * H }; }
+cv.addEventListener('pointerdown', e => {
+  audio(); const p = toGame(e); Object.assign(mouse, p); mouse.down = true; mouse.last = p; mouse.over = true;
+  cv.setPointerCapture(e.pointerId);
+  if (state !== 'play') return;
+  if (inRect(p, BTN_DELIVER)) return deliver();
+  if (inRect(p, BTN_TRASH)) return trash();
+  if (inRect(p, RES.hatch) || inRect(p, RES)) { if (G.board) deliver(); return; }
+  if (inRect(p, bucketRect)) return bucketToBoard();
+  if (inRect(p, MOUNT)) return grabFromMountain();
+  if (G.board) { // Auge ausstechen?
+    const b = G.board, l = b.toLocal(p);
+    for (const eye of b.eyes) if (!eye.dug && Math.hypot(eye.x - l.x, eye.y - l.y) < eye.r + 10) {
+      if (b.peeledAt(eye.x, eye.y)) {
+        eye.dug = true; b.wobble = 0.3; sfx.dig();
+        for (let i = 0; i < 6; i++) particles.push({ x: p.x, y: p.y, vx: rand(-120, 120), vy: rand(-220, -60), r: 0, vr: rand(-6, 6), s: rand(3, 6), life: 0.9, col: '#3b230d', kind: 'chunk' });
+        mouse.down = false;
+      } else say('Erst die Schale um das Auge entfernen!', 1);
+      return;
+    }
+  }
+});
+cv.addEventListener('pointermove', e => { const p = toGame(e); mouse.x = p.x; mouse.y = p.y; mouse.over = true; });
+cv.addEventListener('pointerup', () => { mouse.down = false; mouse.last = null; });
+cv.addEventListener('pointerleave', () => { mouse.over = false; });
+window.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { if (state === 'play') pause(); else if (state === 'pause') resume(); return; }
+  if (state !== 'play' || e.repeat && e.key !== 'q') return;
+  const k = e.key.toLowerCase();
+  if (k === 'q') grabFromMountain();
+  else if (k === 'w') bucketToBoard();
+  else if (k === ' ' || k === 'enter') { e.preventDefault(); deliver(); }
+  else if (k === 'x') trash();
+});
+
+// ---------- Update ----------
+function update(dt) {
+  for (let i = particles.length - 1; i >= 0; i--) { const p = particles[i]; p.vy += 900 * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.r += p.vr * dt; p.life -= dt; if (p.life <= 0 || p.y > H + 40) particles.splice(i, 1); }
+  for (let i = popups.length - 1; i >= 0; i--) { popups[i].t += dt; if (popups[i].t > 1.4) popups.splice(i, 1); }
+  if (state !== 'play' && state !== 'end') return;
+  for (let i = flyers.length - 1; i >= 0; i--) {
+    const f = flyers[i]; f.t += dt;
+    if (f.t >= f.dur) {
+      flyers.splice(i, 1);
+      if (f.kind === 'toBucket') { if (G.bucket.length < U('eimer')) G.bucket.push(f.d); sfx.thud(); }
+      else if (f.kind === 'toBoard') { G.board = new BoardPotato(f.d); if (f.d.rotten) say('Hmm… die sieht faul aus!', 1.2, '#c9e07a'); else if (f.d.gold) say('Eine GOLDENE Kartoffel! ×5 Lohn', 1.6, '#ffc83d'); }
+      else if (f.kind === 'toRes' && f.onDone) f.onDone();
+    }
+  }
+  if (state !== 'play') return;
+  G.time -= dt;
+  if (G.time <= 0) { G.time = 0; state = 'end'; persist(); sfx.lose(); setTimeout(() => endScreen(false), 500); return; }
+  if (G.msg) { G.msg.t -= dt; if (G.msg.t <= 0) G.msg = null; }
+  G.shake = Math.max(0, G.shake - dt); G.hatchOpen = Math.max(0, G.hatchOpen - dt * 2);
+  G.lights = G.lights > 0 ? Math.max(0, G.lights - dt) : Math.min(0, G.lights + dt);
+  // Schälen
+  const b = G.board;
+  if (b) {
+    b.spawn += dt; b.wobble = Math.max(0, b.wobble - dt);
+    if (mouse.down && mouse.last && b.spawn > 0.25) {
+      const p = { x: mouse.x, y: mouse.y };
+      if (Math.hypot(p.x - mouse.last.x, p.y - mouse.last.y) > 0.5) {
+        const before = b.progress;
+        const n = b.cut(mouse.last, p, U('messer'));
+        if (n > 0) {
+          sfx.scrape();
+          const ang = Math.atan2(p.y - mouse.last.y, p.x - mouse.last.x);
+          const cnt = Math.min(3, 1 + (n / 6 | 0));
+          const [base] = peelColors(b.d);
+          for (let i = 0; i < cnt && particles.length < 350; i++) particles.push({ x: p.x + rand(-6, 6), y: p.y + rand(-6, 6), vx: Math.cos(ang) * rand(60, 180) + rand(-60, 60), vy: rand(-260, -80), r: rand(0, 6), vr: rand(-10, 10), s: rand(8, 10 + U('messer') * 0.4), life: 1.6, col: b.d.rotten && Math.random() < 0.4 ? '#2f3a1c' : base, kind: 'peel' });
+          if (before < 0.8 && b.progress >= 0.8) { sfx.machine(); say(b.eyesLeft ? 'Abliefern möglich – Augen noch ausstechen!' : 'Abliefern möglich! (Leertaste)', 1.4, '#7dff9a'); }
+        }
+      }
+      mouse.last = p;
+    } else if (mouse.down) mouse.last = { x: mouse.x, y: mouse.y };
+  }
+  // Förderband
+  const bi = U('band');
+  if (bi) {
+    G.beltAnim += dt;
+    const pending = flyers.filter(f => f.kind === 'toBucket').length;
+    if (G.bucket.length + pending < U('eimer')) {
+      G.beltT += dt;
+      if (G.beltT >= bi) { G.beltT = 0; flyers.push({ kind: 'toBucket', d: newPotatoData(G.cfg), fx: 30, fy: 520, tx: BUCKET.x + rand(-40, 40), ty: BUCKET.y - 40, t: 0, dur: 0.5, s: 15 }); }
+    }
+  }
+  // Schälmaschinen
+  const pt = U('tempo');
+  for (const m of G.machines) {
+    m.anim += dt;
+    if (!m.p) { if (G.bucket.length) { m.p = G.bucket.shift(); m.t = 0; } continue; }
+    m.t += dt;
+    if (m.t >= pt) {
+      const mi = G.machines.indexOf(m), mx = MACH.x + 60 + mi * 105;
+      if (m.p.rotten) { popup(mx, MACH.y + 60, 'faul → Müll', '#c9e07a', 16); }
+      else {
+        const pay = Math.max(1, Math.round(5 * SIZE_PAY[m.p.size] * (m.p.gold ? 5 : 1) * U('vertrag') * G.cfg.pay * 0.7));
+        save.money += pay; G.earned += pay; G.done++; save.total++;
+        popup(mx, MACH.y + 60, `+${pay} €`, '#ffc83d', 20); sfx.machine(); G.lights = 1;
+        checkWin();
+      }
+      m.p = null;
+    }
+  }
+}
+
+// ---------- Zeichnen ----------
+function button(r, enabled, hot, col = '#ffc83d', txtCol = '#1b1712') {
+  ctx.save(); ctx.globalAlpha = enabled ? 1 : 0.4;
+  ctx.fillStyle = '#0006'; ctx.beginPath(); ctx.roundRect(r.x, r.y + 4, r.w, r.h, 10); ctx.fill();
+  ctx.fillStyle = hot && enabled ? '#fff1b8' : col; ctx.beginPath(); ctx.roundRect(r.x, r.y, r.w, r.h, 10); ctx.fill();
+  ctx.fillStyle = txtCol; ctx.font = 'bold 19px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(r.label, r.x + r.w / 2, r.y + r.h / 2 + 1); ctx.restore();
+}
+function drawBucket() {
+  const { x, y } = BUCKET;
+  // Förderband
+  if (U('band')) {
+    ctx.save(); ctx.fillStyle = '#333'; ctx.beginPath(); ctx.moveTo(0, 505); ctx.lineTo(110, 545); ctx.lineTo(110, 565); ctx.lineTo(0, 525); ctx.fill();
+    ctx.strokeStyle = '#777'; ctx.lineWidth = 2; const off = (G ? G.beltAnim * 40 : 0) % 20;
+    for (let i = -1; i < 7; i++) { const t = (i * 20 + off) / 120; ctx.beginPath(); ctx.moveTo(t * 110, 505 + t * 40); ctx.lineTo(t * 110, 525 + t * 40); ctx.stroke(); }
+    ctx.fillStyle = '#c33'; ctx.fillRect(0, 498, 30, 8); ctx.restore();
+  }
+  ctx.save(); ctx.translate(x, y);
+  ctx.fillStyle = '#0004'; ctx.beginPath(); ctx.ellipse(6, 72, 85, 16, 0, 0, 7); ctx.fill();
+  const g = ctx.createLinearGradient(-80, 0, 80, 0); g.addColorStop(0, '#3b3f42'); g.addColorStop(0.4, '#8b9296'); g.addColorStop(1, '#2e3134');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(-82, -40); ctx.lineTo(82, -40); ctx.lineTo(62, 70); ctx.lineTo(-62, 70); ctx.closePath(); ctx.fill();
+  // Inhalt
+  ctx.fillStyle = '#1b1c1d'; ctx.beginPath(); ctx.ellipse(0, -40, 82, 18, 0, 0, 7); ctx.fill();
+  const cap = U('eimer');
+  ctx.save(); ctx.beginPath(); ctx.ellipse(0, -40, 80, 17, 0, 0, 7); ctx.rect(-90, -120, 180, 80); ctx.clip();
+  const bk = G ? G.bucket : [];
+  bk.forEach((d, i) => { const row = Math.floor(i / 5), col = i % 5; drawMini(ctx, -56 + col * 28 + (row % 2) * 12, -40 - row * 12, 15, d); });
+  ctx.restore();
+  ctx.strokeStyle = '#b4bbbf'; ctx.lineWidth = 4; ctx.beginPath(); ctx.ellipse(0, -40, 82, 18, 0, 0, 7); ctx.stroke();
+  ctx.strokeStyle = '#555'; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(0, -40, 92, 70, 0, Math.PI * 1.05, Math.PI * 1.95); ctx.stroke();
+  ctx.fillStyle = '#fff'; ctx.font = 'bold 18px system-ui'; ctx.textAlign = 'center'; ctx.fillText(`${bk.length}/${cap}`, 0, 25);
+  ctx.restore();
+}
+function drawReservoir() {
+  // Lampen
+  const on = G && G.lights;
+  [[RES.x + 40, '#e33'], [RES.x + 290, '#3e3']].forEach(([lx, col], i) => {
+    const lit = on && ((i === 1 && on > 0) || (i === 0 && on < 0));
+    ctx.fillStyle = lit ? col : '#333'; ctx.beginPath(); ctx.arc(lx, RES.y + 59, 13, 0, 7); ctx.fill();
+    if (lit) { ctx.save(); ctx.globalAlpha = 0.5; ctx.shadowColor = col; ctx.shadowBlur = 30; ctx.fill(); ctx.restore(); }
+  });
+  // Füllstand
+  const q = G ? G.cfg.quota : 1, d = G ? Math.min(G.done, q) : 0;
+  const bx = RES.x + 40, by = RES.y + 112, bw = RES.w - 80, bh = 26;
+  ctx.fillStyle = '#111'; ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, 6); ctx.fill();
+  ctx.fillStyle = '#6fd18a'; ctx.beginPath(); ctx.roundRect(bx + 3, by + 3, (bw - 6) * d / q, bh - 6, 4); ctx.fill();
+  ctx.fillStyle = '#fff'; ctx.font = 'bold 16px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(`${G ? G.done : 0} / ${q} Kartoffeln`, bx + bw / 2, by + bh / 2 + 1);
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillStyle = '#cfe1d6'; ctx.font = '14px system-ui'; ctx.fillText('Hierher abliefern ↓', RES.x + RES.w / 2, RES.y + 180);
+  // Luke offen
+  const hz = RES.hatch, o = G ? G.hatchOpen : 0;
+  if (o > 0) { ctx.fillStyle = `rgba(255,220,120,${o * 0.35})`; ctx.beginPath(); ctx.roundRect(hz.x, hz.y, hz.w, hz.h, 8); ctx.fill(); }
+  if (state === 'play' && G.board && canDeliver() && inRect(mouse, RES)) { ctx.strokeStyle = '#7dff9a'; ctx.lineWidth = 4; ctx.beginPath(); ctx.roundRect(hz.x - 4, hz.y - 4, hz.w + 8, hz.h + 8, 10); ctx.stroke(); }
+}
+function drawMachines() {
+  const n = G ? G.machines.length : 0;
+  ctx.fillStyle = '#cfd8d3'; ctx.font = 'bold 16px system-ui'; ctx.textAlign = 'left';
+  ctx.fillText('SCHÄLMASCHINEN', MACH.x + 16, MACH.y + 26);
+  if (!n) { ctx.fillStyle = '#ffffff55'; ctx.font = '15px system-ui'; ctx.textAlign = 'center'; ctx.fillText('Noch keine Maschinen.', MACH.x + MACH.w / 2, MACH.y + 140); ctx.fillText('Kauf welche im Shop!', MACH.x + MACH.w / 2, MACH.y + 162); }
+  const pt = U('tempo');
+  for (let i = 0; i < 3; i++) {
+    const x = MACH.x + 15 + i * 105, y = MACH.y + 45;
+    if (i >= n) { ctx.strokeStyle = '#ffffff12'; ctx.setLineDash([6, 6]); ctx.strokeRect(x, y, 95, 245); ctx.setLineDash([]); continue; }
+    const m = G.machines[i];
+    let g = ctx.createLinearGradient(x, 0, x + 95, 0); g.addColorStop(0, '#6e1d1d'); g.addColorStop(0.5, '#b03030'); g.addColorStop(1, '#5a1616');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.roundRect(x, y + 40, 95, 165, 8); ctx.fill();
+    ctx.fillStyle = '#7a2222'; ctx.beginPath(); ctx.moveTo(x - 5, y + 40); ctx.lineTo(x + 100, y + 40); ctx.lineTo(x + 80, y); ctx.lineTo(x + 15, y); ctx.fill();
+    // Trommel
+    ctx.save(); ctx.translate(x + 47, y + 110); ctx.rotate(m.p ? m.anim * 8 : 0);
+    ctx.fillStyle = '#2a2a2a'; ctx.beginPath(); ctx.arc(0, 0, 32, 0, 7); ctx.fill();
+    ctx.strokeStyle = '#888'; ctx.lineWidth = 3; for (let k = 0; k < 6; k++) { ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(k) * 30, Math.sin(k) * 30); ctx.stroke(); }
+    if (m.p) drawMini(ctx, 0, 0, 13, Object.assign({}, m.p, { peeled: m.t / pt > 0.6 }));
+    ctx.restore();
+    ctx.fillStyle = '#111'; ctx.fillRect(x + 10, y + 170, 75, 12);
+    ctx.fillStyle = m.p ? '#6fd18a' : '#444'; ctx.fillRect(x + 12, y + 172, m.p ? 71 * (m.t / pt) : 0, 8);
+    ctx.fillStyle = '#ddd'; ctx.font = 'bold 12px system-ui'; ctx.textAlign = 'center'; ctx.fillText(m.p ? 'schält…' : 'wartet', x + 47, y + 230);
+    ctx.fillStyle = '#333'; ctx.fillRect(x + 8, y + 205, 12, 18); ctx.fillRect(x + 75, y + 205, 12, 18);
+    if (m.p && Math.random() < 0.3) particles.push({ x: x + 47 + rand(-20, 20), y: y + 140, vx: rand(-50, 50), vy: rand(-80, 0), r: 0, vr: rand(-6, 6), s: rand(4, 7), life: 0.5, col: '#b9824a', kind: 'peel' });
+  }
+}
+function drawHUD() {
+  ctx.fillStyle = '#000a'; ctx.fillRect(0, 0, W, 50);
+  ctx.textBaseline = 'middle'; ctx.textAlign = 'left'; ctx.font = 'bold 22px system-ui';
+  ctx.fillStyle = '#ffc83d'; ctx.fillText(`LEVEL ${G.level}`, 18, 26);
+  // Zeit
+  const t = Math.ceil(G.time), low = G.time < 10;
+  ctx.fillStyle = low && (G.time * 2 % 1 < 0.5) ? '#ff6b5b' : '#fff';
+  ctx.fillText(`⏱ ${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`, 150, 26);
+  const tw = 180; ctx.fillStyle = '#333'; ctx.fillRect(260, 19, tw, 14);
+  ctx.fillStyle = low ? '#ff6b5b' : '#6fb7ff'; ctx.fillRect(260, 19, tw * G.time / G.maxTime, 14);
+  ctx.fillStyle = '#fff'; ctx.fillText(`🥔 ${G.done}/${G.cfg.quota}`, 470, 26);
+  ctx.fillStyle = '#ffc83d'; ctx.fillText(`💰 ${euro(save.money)}`, 600, 26);
+  if (G.streak > 1) { ctx.fillStyle = '#7dff9a'; ctx.fillText(`🔥 Serie ×${G.streak}`, 800, 26); }
+  ctx.textBaseline = 'alphabetic';
+}
+function draw() {
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  if (G && G.shake > 0) ctx.translate(rand(-1, 1) * G.shake * 14, rand(-1, 1) * G.shake * 14);
+  ctx.drawImage(bgCanvas, 0, 0);
+  // Schnee
+  const now = performance.now() / 1000;
+  ctx.fillStyle = '#ffffffcc';
+  for (let i = 0; i < 40; i++) { const x = (i * 97 + Math.sin(now + i) * 20) % 380, y = (i * 53 + now * (20 + i % 5 * 8)) % 720; ctx.beginPath(); ctx.arc(x, y, 1 + i % 3, 0, 7); ctx.fill(); }
+  if (state === 'play' && inRect(mouse, MOUNT) && mouse.over) { ctx.fillStyle = '#ffffff22'; ctx.beginPath(); ctx.arc(mouse.x, mouse.y, 40, 0, 7); ctx.fill(); }
+  drawBucket(); drawReservoir(); drawMachines();
+  if (G) {
+    if (G.board) G.board.draw(ctx);
+    else if (state === 'play') { ctx.fillStyle = '#5a3a1a88'; ctx.font = 'bold 22px system-ui'; ctx.textAlign = 'center'; ctx.fillText(G.bucket.length ? 'Klick auf den Eimer (W)' : 'Klick auf den Berg (Q)', BOARD.cx, BOARD.cy); }
+    // Fortschritt der aktuellen Kartoffel
+    if (G.board) {
+      const b = G.board, p = b.progress;
+      const x = BOARD.x + 20, y = BOARD.y + 16, w = BOARD.w - 40;
+      ctx.fillStyle = '#0007'; ctx.beginPath(); ctx.roundRect(x, y, w, 22, 6); ctx.fill();
+      ctx.fillStyle = p >= 0.8 ? '#6fd18a' : '#e9b450'; ctx.beginPath(); ctx.roundRect(x + 2, y + 2, (w - 4) * p, 18, 5); ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.fillRect(x + 2 + (w - 4) * 0.8, y, 2, 22);
+      ctx.font = 'bold 14px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      let info = `${Math.floor(p * 100)} % geschält · ${SIZE_NAME[b.d.size]}`;
+      if (b.eyesLeft) info += ` · ${b.eyesLeft} Auge${b.eyesLeft > 1 ? 'n' : ''}`;
+      if (b.d.gold) info += ' · GOLD';
+      ctx.fillText(info, x + w / 2, y + 12); ctx.textBaseline = 'alphabetic';
+    }
+    button(BTN_TRASH, !!G.board && state === 'play', inRect(mouse, BTN_TRASH), '#8a8f93', '#111');
+    BTN_DELIVER.label = G.board && G.board.progress >= 0.8 && G.board.progress >= 0.985 && !G.board.eyesLeft ? 'Abliefern ★' : 'Abliefern ➜ (Leer)';
+    button(BTN_DELIVER, state === 'play' && canDeliver(), inRect(mouse, BTN_DELIVER), '#6fd18a');
+  }
+  // Partikel
+  for (const p of particles) {
+    ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.r); ctx.globalAlpha = clamp(p.life, 0, 1); ctx.fillStyle = p.col;
+    if (p.kind === 'peel') { ctx.beginPath(); ctx.moveTo(-p.s, 0); ctx.quadraticCurveTo(0, -p.s * 0.8, p.s, 0); ctx.quadraticCurveTo(0, -p.s * 0.3, -p.s, 0); ctx.fill(); ctx.fillStyle = '#f3e2a8'; ctx.globalAlpha *= 0.6; ctx.fillRect(-p.s * 0.5, -p.s * 0.25, p.s, 1.5); }
+    else { ctx.beginPath(); ctx.arc(0, 0, p.s * 0.5, 0, 7); ctx.fill(); }
+    ctx.restore();
+  }
+  // Flug-Kartoffeln
+  for (const f of flyers) {
+    if (f.t < 0) continue;
+    const t = clamp(f.t / f.dur, 0, 1), e = t * t * (3 - 2 * t);
+    const x = lerp(f.fx, f.tx, e), y = lerp(f.fy, f.ty, e) - Math.sin(t * Math.PI) * 90;
+    const s = f.kind === 'toRes' ? lerp(f.s, 12, e) : f.kind === 'toBoard' ? lerp(15, 40, e) : f.s;
+    drawMini(ctx, x, y, s, f.d, t * 6);
+  }
+  // Popups
+  ctx.textAlign = 'center';
+  for (const p of popups) {
+    const a = 1 - Math.max(0, p.t - 0.9) / 0.5;
+    ctx.globalAlpha = clamp(a, 0, 1); ctx.font = `900 ${p.size}px system-ui`;
+    ctx.lineWidth = 5; ctx.strokeStyle = '#000a'; ctx.strokeText(p.text, p.x, p.y - p.t * 50); ctx.fillStyle = p.color; ctx.fillText(p.text, p.x, p.y - p.t * 50);
+  }
+  ctx.globalAlpha = 1;
+  if (G && (state === 'play' || state === 'end' || state === 'pause')) {
+    drawHUD();
+    if (G.msg) {
+      ctx.globalAlpha = clamp(G.msg.t * 3, 0, 1); ctx.font = 'bold 24px system-ui'; ctx.textAlign = 'center';
+      const w = ctx.measureText(G.msg.text).width + 40;
+      ctx.fillStyle = '#000b'; ctx.beginPath(); ctx.roundRect(BOARD.cx - w / 2, 66, w, 40, 10); ctx.fill();
+      ctx.fillStyle = G.msg.color; ctx.fillText(G.msg.text, BOARD.cx, 94); ctx.globalAlpha = 1;
+    }
+  }
+  // Cursor
+  if (mouse.over) {
+    const onBoard = state === 'play' && G && G.board && inRect(mouse, BOARD);
+    if (onBoard) {
+      const r = U('messer');
+      ctx.strokeStyle = mouse.down ? '#ffffffcc' : '#ffffff77'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(mouse.x, mouse.y, r, 0, 7); ctx.stroke();
+      // Sparschäler
+      ctx.save(); ctx.translate(mouse.x, mouse.y); ctx.rotate(-0.7 + (mouse.down ? Math.sin(now * 30) * 0.1 : 0));
+      ctx.fillStyle = '#d6dadc'; ctx.beginPath(); ctx.roundRect(-4, -r - 6, 8, r + 2, 3); ctx.fill();
+      ctx.fillStyle = '#7a4a22'; ctx.beginPath(); ctx.roundRect(-7, 0, 14, 70, 6); ctx.fill();
+      ctx.fillStyle = '#5a3416'; ctx.fillRect(-7, 20, 14, 4); ctx.restore();
+    } else {
+      ctx.fillStyle = '#fff'; ctx.strokeStyle = '#000'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(mouse.x, mouse.y); ctx.lineTo(mouse.x + 14, mouse.y + 14); ctx.lineTo(mouse.x + 6, mouse.y + 15); ctx.lineTo(mouse.x + 1, mouse.y + 21); ctx.closePath(); ctx.fill(); ctx.stroke();
+    }
+  }
+}
+
+// ---------- Overlays ----------
+function showOv(id) { document.querySelectorAll('.ov').forEach(o => o.classList.toggle('show', o.id === id)); $('pauseBtn').style.display = state === 'play' ? '' : 'none'; }
+function menu() { state = 'menu'; G = null; $('menuMoney').textContent = euro(save.money); $('bSound').textContent = save.sound ? '🔊 Ton an' : '🔇 Ton aus'; showOv('ovMenu'); }
+function pause() { if (state !== 'play') return; state = 'pause'; showOv('ovPause'); }
+function resume() { state = 'play'; showOv(null); }
+let shopReturn = 'menu';
+function openShop(from) { shopReturn = from; renderShop(); showOv('ovShop'); }
+function renderShop() {
+  $('shopMoney').textContent = euro(save.money);
+  const grid = $('shopgrid'); grid.innerHTML = '';
+  for (const k in UPGRADES) {
+    const u = UPGRADES[k], lvl = save.up[k], max = u.vals.length - 1, price = u.prices[lvl];
+    const el = document.createElement('div'); el.className = 'card';
+    el.innerHTML = `<b>${u.name}</b><span>${u.desc}</span><span class="lvl">Jetzt: ${fmtVal(k, u.vals[lvl])}${lvl < max ? ' → ' + fmtVal(k, u.vals[lvl + 1]) : ''}</span><span class="pips">${'●'.repeat(lvl)}${'○'.repeat(max - lvl)}</span>`;
+    const btn = document.createElement('button');
+    if (lvl >= max) { btn.textContent = 'Maximal'; btn.disabled = true; }
+    else if (k === 'tempo' && !save.up.maschinen) { btn.textContent = 'Erst Maschine kaufen'; btn.disabled = true; }
+    else { btn.textContent = `Kaufen – ${euro(price)}`; btn.disabled = save.money < price; btn.onclick = () => { save.money -= price; save.up[k]++; persist(); sfx.coin(); renderShop(); }; }
+    el.appendChild(btn); grid.appendChild(el);
+  }
+}
+function renderMap() {
+  const box = $('levels'); box.innerHTML = '';
+  const n = Math.max(20, Math.ceil((save.unlocked + 1) / 5) * 5);
+  for (let i = 1; i <= n; i++) {
+    const b = document.createElement('button'), st = save.stars[i] || 0;
+    if (i > save.unlocked) { b.className = 'sec'; b.disabled = true; b.innerHTML = `🔒<span>${i}</span>`; }
+    else { if (!st) b.className = 'sec'; b.innerHTML = `<span>Level ${i}</span><span class="stars">${st ? '★'.repeat(st) + '☆'.repeat(3 - st) : 'neu'}</span>`; b.onclick = () => startLevel(i); }
+    box.appendChild(b);
+  }
+}
+$('bPlay').onclick = () => startLevel(save.unlocked);
+$('bMap').onclick = () => { renderMap(); showOv('ovMap'); };
+$('bShop').onclick = () => openShop('menu');
+$('bHelp').onclick = () => showOv('ovHelp');
+$('bHelpBack').onclick = () => menu();
+$('bSound').onclick = () => { save.sound = !save.sound; persist(); menu(); };
+let resetArmed = false;
+$('bReset').onclick = () => {
+  if (!resetArmed) { resetArmed = true; $('bReset').textContent = 'Sicher? Nochmal klicken'; setTimeout(() => { resetArmed = false; if (state === 'menu') $('bReset').textContent = 'Spielstand löschen'; }, 3000); return; }
+  resetArmed = false; save = freshSave(); persist(); menu(); $('bReset').textContent = 'Spielstand löschen';
+};
+$('bMapBack').onclick = () => menu();
+$('bMapShop').onclick = () => openShop('map');
+$('bShopBack').onclick = () => { if (shopReturn === 'end') showOv('ovEnd'); else if (shopReturn === 'map') { renderMap(); showOv('ovMap'); } else menu(); };
+$('bEndNext').onclick = () => startLevel(G.level + 1);
+$('bEndRetry').onclick = () => startLevel(G.level);
+$('bEndShop').onclick = () => openShop('end');
+$('bEndMenu').onclick = () => menu();
+$('pauseBtn').onclick = () => pause();
+$('bResume').onclick = () => resume();
+$('bPauseRestart').onclick = () => { persist(); startLevel(G.level); };
+$('bPauseMenu').onclick = () => { persist(); menu(); };
+document.addEventListener('visibilitychange', () => { if (document.hidden) { persist(); pause(); } });
+
+// ---------- Schleife ----------
+let lastT = performance.now();
+function frame(t) {
+  const dt = Math.min(0.05, (t - lastT) / 1000); lastT = t;
+  if (state !== 'pause') update(dt);
+  draw();
+  requestAnimationFrame(frame);
+}
+resize(); buildBackground(); menu();
+if (!save.total) showOv('ovHelp');
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
