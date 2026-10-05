@@ -5,36 +5,38 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Kartoffel-Schälerei</title>
 <style>
-  :root { color-scheme:dark; --gold:#ffc83d; --ink:#1b1712; --panel:#221d17ee; --line:#5c4b37; }
+  :root { color-scheme:dark; --gold:#ffc83d; --ink:#1b1712; --panel:#1d1a15f0; --line:#5c4b37; --bg:#0b0a08; --fg:#f1e8d6; }
   * { box-sizing:border-box; }
-  html,body { margin:0; height:100%; background:#0d0b09; color:#f4ead8; font-family:system-ui,"Segoe UI",Roboto,sans-serif; overflow:hidden; user-select:none; }
-  #wrap { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); aspect-ratio:16/9; width:min(100vw, calc(100vh * 16 / 9)); }
+  html,body { margin:0; height:100%; background:var(--bg); color:var(--fg); font-family:system-ui,"Segoe UI",Roboto,sans-serif; overflow:hidden; user-select:none; }
+  #wrap { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); aspect-ratio:16/9; width:min(100vw, calc(100vh * 16 / 9)); max-width:100%; }
   canvas { position:absolute; inset:0; width:100%; height:100%; display:block; cursor:none; }
-  .ov { position:absolute; inset:0; display:none; align-items:center; justify-content:center; background:#0008; backdrop-filter:blur(3px); }
+  .ov { position:absolute; inset:0; display:none; align-items:center; justify-content:center; background:#000a; backdrop-filter:blur(3px); }
   .ov.show { display:flex; }
-  .box { background:var(--panel); border:2px solid var(--line); border-radius:16px; padding:24px 30px; max-width:88%; max-height:90%; overflow:auto; text-align:center; box-shadow:0 20px 60px #000a; }
-  h1 { font-size:clamp(28px,5vw,64px); margin:0 0 6px; color:var(--gold); text-shadow:0 4px 0 #8a5a12, 0 8px 20px #000; letter-spacing:1px; }
-  h2 { margin:0 0 14px; color:var(--gold); font-size:clamp(20px,2.6vw,34px); }
+  .box { background:var(--panel); border:2px solid var(--line); border-radius:14px; padding:24px 30px; max-width:88%; max-height:92%; overflow:auto; text-align:center; box-shadow:0 20px 60px #000a; }
+  h1 { font-size:clamp(28px,5vw,64px); margin:0 0 6px; color:var(--gold); text-shadow:0 4px 0 #8a5a12, 0 8px 20px #000; letter-spacing:1px; font-style:italic; }
+  h2 { margin:0 0 14px; color:var(--gold); font-size:clamp(20px,2.6vw,34px); font-style:italic; }
   p { margin:6px 0; line-height:1.45; }
   button { font:inherit; font-weight:700; border:0; border-radius:10px; padding:10px 18px; margin:5px; cursor:pointer; background:var(--gold); color:var(--ink); box-shadow:0 4px 0 #9b6b14; }
   button:hover { filter:brightness(1.08); }
+  button:focus-visible { outline:3px solid #fff; outline-offset:2px; }
   button:active { transform:translateY(2px); box-shadow:0 2px 0 #9b6b14; }
-  button.sec { background:#4a3d2e; color:#f4ead8; box-shadow:0 4px 0 #2a2119; }
+  button.sec { background:#4a3d2e; color:var(--fg); box-shadow:0 4px 0 #2a2119; }
   button:disabled { opacity:.45; cursor:default; transform:none; }
   .sub { opacity:.8; font-size:.95em; }
   #levels { display:grid; grid-template-columns:repeat(5, 92px); gap:10px; justify-content:center; margin:10px 0 16px; }
   #levels button { margin:0; padding:10px 4px; display:flex; flex-direction:column; align-items:center; }
   #levels .stars { font-size:13px; letter-spacing:1px; color:#7a4e0c; }
   #shopgrid { display:grid; grid-template-columns:repeat(auto-fill, minmax(230px,1fr)); gap:12px; margin:12px 0; text-align:left; width:min(1000px, 80vw); }
-  .card { background:#2f271f; border:1px solid var(--line); border-radius:12px; padding:12px 14px; display:flex; flex-direction:column; gap:4px; }
+  .card { background:#2b251e; border:1px solid var(--line); border-radius:12px; padding:12px 14px; display:flex; flex-direction:column; gap:4px; }
   .card b { color:var(--gold); font-size:1.05em; }
   .card .lvl { font-size:.85em; opacity:.8; }
   .card .pips { letter-spacing:2px; color:var(--gold); }
-  .card button { margin:6px 0 0; }
+  .card button { margin:auto 0 0; }
+  .shophead { font-size:.8em; letter-spacing:.12em; text-transform:uppercase; color:#c9b48f; grid-column:1/-1; margin-top:6px; }
   .money { color:var(--gold); font-weight:800; }
-  #pauseBtn { position:absolute; right:1.2%; top:1.4%; padding:6px 12px; margin:0; font-size:clamp(11px,1.2vw,16px); }
-  .keys { text-align:left; display:inline-block; margin:8px 0; }
-  .keys kbd { background:#4a3d2e; border-radius:5px; padding:1px 7px; border-bottom:2px solid #2a2119; font-family:inherit; }
+  #pauseBtn { position:absolute; right:1.2%; top:1%; padding:5px 12px; margin:0; font-size:clamp(11px,1.2vw,16px); }
+  .keys { text-align:left; display:inline-block; margin:8px 0; line-height:2; }
+  .keys kbd, p kbd { background:#4a3d2e; border-radius:5px; padding:1px 7px; border-bottom:2px solid #2a2119; font-family:inherit; }
 </style>
 </head>
 <body>
@@ -44,12 +46,12 @@
 
   <div class="ov show" id="ovMenu"><div class="box">
     <h1>KARTOFFEL-SCHÄLEREI</h1>
-    <p class="sub">Ein riesiger Berg. Ein Messer. Und viel zu viele Kartoffeln.</p>
+    <p class="sub">Ein riesiger Berg Kartoffeln. Die Armee hat Hunger. Du hast ein Messer.</p>
     <p>Kontostand: <span class="money" id="menuMoney"></span></p>
     <div style="margin-top:12px">
       <button id="bPlay">▶ Spielen</button>
-      <button class="sec" id="bMap">Level-Karte</button>
-      <button class="sec" id="bShop">Shop</button>
+      <button class="sec" id="bMap">Tage / Level</button>
+      <button class="sec" id="bShop">Laden</button>
       <button class="sec" id="bHelp">Anleitung</button>
     </div>
     <div>
@@ -59,29 +61,30 @@
   </div></div>
 
   <div class="ov" id="ovHelp"><div class="box">
-    <h2>So geht's</h2>
-    <p>1. Klick auf den <b>Kartoffelberg</b> → Kartoffeln landen im <b>Eimer</b>.</p>
-    <p>2. Klick auf den <b>Eimer</b> → eine Kartoffel kommt aufs <b>Brett</b>.</p>
-    <p>3. <b>Maustaste gedrückt halten und über die Kartoffel ziehen</b> → schälen!</p>
-    <p>4. Dunkle <b>Augen</b> nach dem Schälen anklicken, um sie auszustechen.</p>
-    <p>5. Ab 80&nbsp;% geschält: <b>Abliefern</b> ins Reservoir → Geld. Je sauberer, desto mehr.</p>
-    <p>6. <b>Faule</b> (grünlich-schwarze) Kartoffeln in den <b>Müll</b> werfen – nicht abliefern!</p>
-    <p>7. Schaff die Quote vor Ablauf der Zeit. Mit dem Geld kaufst du im Shop bessere Messer, größere Eimer, Förderbänder und <b>Schälmaschinen</b>, die für dich arbeiten.</p>
+    <h2>Deine einzige Aufgabe: Kartoffeln schälen</h2>
+    <p>1. <b>Draußen am Berg</b>: auf den Kartoffelberg klicken → Kartoffeln fliegen in deinen <b>Eimer</b>.</p>
+    <p>2. In der <b>Küche</b>: auf die <b>Ablage</b> klicken → Eimer wird ausgekippt und eine Kartoffel kommt aufs Brett.</p>
+    <p>3. <b>Maustaste halten und über die Kartoffel ziehen</b> → schälen. Mit <b>Rechtsklick</b>, Mausrad oder <kbd>R</kbd> umdrehen und die Rückseite schälen.</p>
+    <p>4. Nicht ständig über schon geschälte Stellen schneiden – sonst <b>verschwendest</b> du Kartoffel und bekommst weniger Geld.</p>
+    <p>5. Dunkle <b>Augen</b> nach dem Schälen anklicken, um sie auszustechen.</p>
+    <p>6. Fertig? <b>Ins Wasser werfen</b> (<kbd>Leertaste</kbd>) → sie landet in <b>Reservoir Nr. 5</b> und du bekommst Rubel.</p>
+    <p>7. Mit dem Geld kaufst du <b>bessere Werkzeuge</b> (Sparschäler!) und <b>Schältrommeln</b> für die Maschinenhalle, die viele Kartoffeln gleichzeitig schälen.</p>
     <div class="keys">
-      <kbd>Q</kbd> Kartoffel vom Berg &nbsp; <kbd>W</kbd> Eimer → Brett &nbsp; <kbd>Leertaste</kbd> Abliefern &nbsp; <kbd>X</kbd> Wegwerfen &nbsp; <kbd>Esc</kbd> Pause
+      <kbd>1</kbd>–<kbd>4</kbd> oder <kbd>A</kbd>/<kbd>D</kbd> Ort wechseln &nbsp; <kbd>Q</kbd> Berg: nehmen · Küche: Ablage · Halle: einfüllen<br>
+      <kbd>R</kbd> / Rechtsklick umdrehen &nbsp; <kbd>Leertaste</kbd> ins Wasser &nbsp; <kbd>Esc</kbd> Pause
     </div><br>
-    <button id="bHelpBack">Verstanden</button>
+    <button id="bHelpBack">Los geht's</button>
   </div></div>
 
   <div class="ov" id="ovMap"><div class="box">
-    <h2>Level-Karte</h2>
+    <h2>Armee-Aufträge</h2>
     <div id="levels"></div>
-    <button class="sec" id="bMapShop">Shop</button>
+    <button class="sec" id="bMapShop">Laden</button>
     <button class="sec" id="bMapBack">Zurück</button>
   </div></div>
 
   <div class="ov" id="ovShop"><div class="box">
-    <h2>Shop</h2>
+    <h2>Laden</h2>
     <p>Kontostand: <span class="money" id="shopMoney"></span></p>
     <div id="shopgrid"></div>
     <button id="bShopBack">Fertig</button>
@@ -92,9 +95,9 @@
     <div id="endStars" style="font-size:48px;color:var(--gold);letter-spacing:6px"></div>
     <div id="endText"></div>
     <div style="margin-top:12px">
-      <button id="bEndNext">Weiter</button>
+      <button id="bEndNext">Nächster Tag</button>
       <button class="sec" id="bEndRetry">Nochmal</button>
-      <button class="sec" id="bEndShop">Shop</button>
+      <button class="sec" id="bEndShop">Laden</button>
       <button class="sec" id="bEndMenu">Menü</button>
     </div>
   </div></div>
@@ -102,14 +105,14 @@
   <div class="ov" id="ovPause"><div class="box">
     <h2>Pause</h2>
     <button id="bResume">Weiter</button>
-    <button class="sec" id="bPauseRestart">Level neu starten</button>
+    <button class="sec" id="bPauseRestart">Tag neu starten</button>
     <button class="sec" id="bPauseMenu">Aufgeben &amp; Menü</button>
   </div></div>
 </div>
 
 <script>
 'use strict';
-// ---------- Grundgerüst ----------
+// ================= Grundgerüst =================
 const W = 1280, H = 720;
 const cv = document.getElementById('c');
 const ctx = cv.getContext('2d');
@@ -117,38 +120,46 @@ const $ = id => document.getElementById(id);
 let dpr = 1;
 function resize() {
   const r = cv.getBoundingClientRect();
-  dpr = Math.min(2, (r.width * (window.devicePixelRatio || 1)) / W);
+  dpr = Math.min(2, Math.max(0.5, (r.width * (window.devicePixelRatio || 1)) / W));
   cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
 }
 window.addEventListener('resize', resize);
-
 const rand = (a, b) => a + Math.random() * (b - a);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const lerp = (a, b, t) => a + (b - a) * t;
 function mulberry(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
-const euro = v => Math.round(v).toLocaleString('de-DE') + ' €';
+const rub = v => Math.round(v).toLocaleString('de-DE') + ' ₽';
+const inRect = (p, r) => p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h;
 
-// ---------- Spielstand ----------
+// ================= Werkzeuge & Laden =================
+const TOOLS = [
+  { name: 'Küchenmesser',        r: 19, waste: 0.20, over: 0.45, kind: 'knife' },
+  { name: 'Sparschäler',         r: 17, waste: 0.06, over: 0.20, kind: 'peeler' },
+  { name: 'Breiter Sparschäler', r: 25, waste: 0.04, over: 0.14, kind: 'peeler' },
+  { name: 'Profi-Schäler',       r: 34, waste: 0.02, over: 0.08, kind: 'peeler' },
+];
 const UPGRADES = {
-  messer:   { name:'Schälmesser',     desc:'Breitere Klinge – schält mehr pro Zug.',          vals:[16,22,29,37,46],    prices:[60,180,450,1000] },
-  eimer:    { name:'Eimer',           desc:'Mehr Platz für Kartoffeln.',                      vals:[3,5,8,12,18],       prices:[40,120,300,700] },
-  schaufel: { name:'Schaufel',        desc:'Mehr Kartoffeln pro Klick auf den Berg.',         vals:[1,2,3,5],           prices:[150,450,1200] },
-  vertrag:  { name:'Liefervertrag',   desc:'Mehr Geld pro Kartoffel.',                        vals:[1,1.25,1.5,2,2.6],  prices:[100,350,900,2200] },
-  thermos:  { name:'Thermoskanne Kaffee', desc:'Mehr Zeit pro Level.',                        vals:[0,15,30,45],        prices:[80,250,600] },
-  band:     { name:'Förderband',      desc:'Füllt den Eimer automatisch vom Berg (Sekunden pro Kartoffel).', vals:[0,4,2.5,1.4,0.8], prices:[250,600,1400,3000] },
-  maschinen:{ name:'Schälmaschine',   desc:'Schält Kartoffeln aus dem Eimer selbstständig (70 % Lohn).', vals:[0,1,2,3], prices:[400,1200,3000] },
-  tempo:    { name:'Maschinen-Motor', desc:'Schälmaschinen arbeiten schneller (Sekunden pro Kartoffel).', vals:[9,6,4,2.5,1.5], prices:[500,1300,3000,6500] },
+  werkzeug: { group:'Werkzeug', name:'Schälwerkzeug',  desc:'Besseres Werkzeug: schält breiter und verschwendet weniger Kartoffel.', vals:[0,1,2,3], prices:[80,320,950] },
+  eimer:    { group:'Werkzeug', name:'Eimer',          desc:'Mehr Kartoffeln pro Gang zum Berg.', vals:[4,6,10,15,25], prices:[50,160,420,1000] },
+  schaufel: { group:'Werkzeug', name:'Schaufel',       desc:'Mehr Kartoffeln pro Griff in den Berg.', vals:[1,2,3,5], prices:[120,400,1100] },
+  tee:      { group:'Werkzeug', name:'Samowar-Tee',    desc:'Hält dich wach: mehr Zeit pro Tag.', vals:[0,20,40,60], prices:[80,260,650] },
+  trommel:  { group:'Maschinen', name:'Schältrommel',  desc:'Maschine für die Halle. Schält alle Kartoffeln im Trichter gleichzeitig.', vals:[0,1,2,3], prices:[500,1500,4000] },
+  trichter: { group:'Maschinen', name:'Größerer Trichter', desc:'Mehr Kartoffeln pro Trommel-Durchgang.', vals:[6,10,18,30], prices:[400,1100,2800], needs:'trommel' },
+  motor:    { group:'Maschinen', name:'Trommel-Motor', desc:'Ein Durchgang dauert kürzer.', vals:[18,13,9,5], prices:[450,1200,3000], needs:'trommel' },
+  fein:     { group:'Maschinen', name:'Feinschliff',   desc:'Die Trommel verschwendet weniger Kartoffel.', vals:[0.35,0.25,0.15,0.07], prices:[500,1400,3200], needs:'trommel' },
+  band:     { group:'Maschinen', name:'Förderband',    desc:'Schaufelt Kartoffeln vom Berg direkt in die Trommeln.', vals:[0,3,1.8,1,0.5], prices:[800,1800,3500,7000], needs:'trommel' },
 };
-const fmtVal = (k, v) => ({ messer:v+' px', eimer:v+' Stück', schaufel:v+' pro Klick', vertrag:'×'+v, thermos:'+'+v+' s', band: v ? v+' s' : 'keins', maschinen:v+' Stück', tempo:v+' s' })[k];
+const fmtVal = (k, v) => ({ werkzeug:TOOLS[v].name, eimer:v+' Stück', schaufel:v+' pro Griff', tee:'+'+v+' s', trommel:v+' Stück', trichter:v+' Kartoffeln', motor:v+' s', fein:Math.round(v*100)+' % Abfall', band: v ? 'alle '+v+' s' : 'keins' })[k];
 
-const SAVE_KEY = 'kartoffel-schaelerei-v1';
+const SAVE_KEY = 'kartoffel-schaelerei-v2';
 function freshSave() { const u = {}; for (const k in UPGRADES) u[k] = 0; return { money:0, unlocked:1, stars:{}, up:u, sound:true, total:0 }; }
 let save = freshSave();
 try { const s = JSON.parse(localStorage.getItem(SAVE_KEY)); if (s && s.up) { save = Object.assign(freshSave(), s); save.up = Object.assign(freshSave().up, s.up); } } catch (e) {}
 function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) {} }
 const U = k => UPGRADES[k].vals[save.up[k]];
+const tool = () => TOOLS[U('werkzeug')];
 
-// ---------- Ton ----------
+// ================= Ton =================
 let ac = null, lastScrape = 0;
 function audio() { if (!save.sound) return null; if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; } } if (ac.state === 'suspended') ac.resume(); return ac; }
 function tone(freq, dur, type = 'sine', vol = 0.15, slide = 0) {
@@ -158,654 +169,699 @@ function tone(freq, dur, type = 'sine', vol = 0.15, slide = 0) {
   g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
   o.connect(g).connect(a.destination); o.start(t); o.stop(t + dur);
 }
-function noise(dur, vol = 0.12, freq = 2500) {
+function noise(dur, vol = 0.12, freq = 2500, type = 'bandpass') {
   const a = audio(); if (!a) return;
   const n = Math.floor(a.sampleRate * dur), b = a.createBuffer(1, n, a.sampleRate), d = b.getChannelData(0);
   for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n);
   const s = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain();
-  f.type = 'bandpass'; f.frequency.value = freq; f.Q.value = 1.2; g.gain.value = vol;
+  f.type = type; f.frequency.value = freq; f.Q.value = 1.2; g.gain.value = vol;
   s.buffer = b; s.connect(f).connect(g).connect(a.destination); s.start();
 }
 const sfx = {
-  scrape() { const t = performance.now(); if (t - lastScrape > 70) { lastScrape = t; noise(0.07, 0.09, rand(1800, 3600)); } },
-  pop() { tone(rand(380, 460), 0.09, 'triangle', 0.18, 200); },
-  thud() { tone(140, 0.12, 'sine', 0.25, -60); },
-  coin() { tone(988, 0.08, 'square', 0.06); setTimeout(() => tone(1319, 0.18, 'square', 0.06), 70); },
+  scrape() { const t = performance.now(); if (t - lastScrape > 70) { lastScrape = t; noise(0.07, 0.09, tool().kind === 'knife' ? rand(1200, 2200) : rand(2600, 4200)); } },
+  overcut() { const t = performance.now(); if (t - lastScrape > 90) { lastScrape = t; noise(0.08, 0.06, 700); } },
+  grab() { noise(0.12, 0.12, 500); },
+  clank() { tone(rand(700, 900), 0.12, 'triangle', 0.08); tone(rand(1500, 1800), 0.08, 'sine', 0.04); },
+  pop() { tone(rand(380, 460), 0.09, 'triangle', 0.16, 200); },
+  splash() { noise(0.35, 0.22, 900, 'lowpass'); setTimeout(() => noise(0.15, 0.08, 2000), 80); },
+  coin() { tone(988, 0.08, 'square', 0.05); setTimeout(() => tone(1319, 0.18, 'square', 0.05), 70); },
   perfect() { [784, 988, 1175, 1568].forEach((f, i) => setTimeout(() => tone(f, 0.15, 'triangle', 0.12), i * 70)); },
-  bad() { tone(160, 0.3, 'sawtooth', 0.1, -80); },
+  bad() { tone(160, 0.3, 'sawtooth', 0.08, -80); },
   dig() { noise(0.12, 0.18, 900); tone(300, 0.08, 'triangle', 0.1, -150); },
-  trash() { noise(0.25, 0.15, 400); },
+  flip() { noise(0.1, 0.08, 600); },
+  whoosh() { noise(0.25, 0.06, 1200); },
   win() { [523, 659, 784, 1047, 1319].forEach((f, i) => setTimeout(() => tone(f, 0.25, 'triangle', 0.13), i * 110)); },
   lose() { [392, 330, 262, 196].forEach((f, i) => setTimeout(() => tone(f, 0.3, 'sawtooth', 0.07), i * 160)); },
-  machine() { tone(620, 0.06, 'square', 0.04); },
+  machine() { tone(110, 0.25, 'sawtooth', 0.05, 30); },
 };
 
-// ---------- Layout ----------
-const MOUNT = { x:0, y:60, w:370, h:430 };
-const BUCKET = { x:190, y:612, w:180, h:150 }; // Mitte
-const BOARD = { x:395, y:120, w:520, h:530, cx:655, cy:385 };
-const BTN_TRASH = { x:410, y:664, w:200, h:46, label:'🗑 Wegwerfen (X)' };
-const BTN_DELIVER = { x:700, y:664, w:200, h:46, label:'Abliefern ➜' };
-const RES = { x:935, y:70, w:330, h:300, hatch:{ x:1040, y:268, w:120, h:70 } };
-const MACH = { x:935, y:395, w:330, h:310 };
-const inRect = (p, r) => p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h;
-const bucketRect = { x:BUCKET.x - 95, y:BUCKET.y - 80, w:190, h:160 };
+// ================= Orte (Ich-Perspektive, Kamera schwenkt) =================
+const STATIONS = ['Kartoffelberg', 'Küche', 'Reservoir', 'Maschinenhalle'];
+const cam = { x: 0, target: 0, st: 0 };
+function goStation(i) { i = clamp(i, 0, 3); if (i !== cam.st) { cam.st = i; cam.target = i * W; sfx.whoosh(); mouse.down = false; } }
+const panning = () => Math.abs(cam.x - cam.target) > 3;
+const NAV = STATIONS.map((n, i) => ({ x: 640 - 2 * 168 + i * 168 + 4, y: 678, w: 160, h: 34, i, label: `${i + 1} ${n}` }));
 
-// ---------- Kartoffeln ----------
+const TRAY = { x: 60, y: 440, w: 300, h: 190 };
+const BOARD = { cx: 735, cy: 395 };
+const BTN_FLIP = { x: 1040, y: 470, w: 220, h: 48, label: '⟲ Umdrehen (R)' };
+const BTN_THROW = { x: 1040, y: 530, w: 220, h: 56, label: 'Ins Wasser ➜' };
+const MACH_X = i => 70 + i * 395;
+const BUCKET_POS = { x: 1085, y: 560 };
+
+// ================= Kartoffeln =================
 function levelCfg(n) {
   return {
-    quota: 4 + Math.floor(n * 1.7),
-    time: 70 + Math.min(n, 25) * 5,
-    rotten: n <= 2 ? 0 : Math.min(0.06 + n * 0.012, 0.3),
-    eyes: Math.min(Math.floor((n + 1) / 2), 6),
-    gold: n >= 3 ? 0.05 : 0,
-    big: Math.min(0.15 + n * 0.04, 0.6),
-    giant: n >= 8 ? Math.min(0.04 + (n - 8) * 0.02, 0.25) : 0,
-    pay: 1 + (n - 1) * 0.12,
+    quota: 4 + Math.floor(n * 1.6),
+    time: Math.min(140 + n * 12, 340),
+    eyes: Math.min(1 + Math.floor(n / 2), 6),
+    big: Math.min(0.1 + n * 0.05, 0.6),
+    giant: n >= 6 ? Math.min(0.05 + (n - 6) * 0.03, 0.3) : 0,
+    pay: 1 + (n - 1) * 0.15,
   };
 }
-function newPotatoData(cfg) {
-  const r = Math.random();
-  const size = Math.random() < cfg.giant ? 3 : Math.random() < cfg.big ? 2 : r < 0.35 ? 0 : 1;
-  const rotten = Math.random() < cfg.rotten;
-  const gold = !rotten && Math.random() < cfg.gold;
-  return { seed: (Math.random() * 1e9) | 0, size, rotten, gold, eyes: Math.floor(Math.random() * (cfg.eyes + 1)) };
+function newPotato(cfg) {
+  const size = Math.random() < cfg.giant ? 3 : Math.random() < cfg.big ? 2 : Math.random() < 0.35 ? 0 : 1;
+  return { seed: (Math.random() * 1e9) | 0, size, eyes: Math.floor(Math.random() * (cfg.eyes + 1)) };
 }
-const SIZE_R = [100, 126, 150, 172], SIZE_PAY = [0.8, 1, 1.45, 2.1], SIZE_NAME = ['klein', 'mittel', 'groß', 'RIESIG'];
+const SIZE_R = [100, 118, 136, 152], SIZE_PAY = [0.8, 1, 1.4, 1.9], SIZE_NAME = ['klein', 'mittel', 'groß', 'riesig'];
+const PEEL = ['#c49a55', '#8e6630', '#dcb877'];
 
-function peelColors(d) {
-  if (d.gold) return ['#f7c948', '#c9901d', '#ffe9a0'];
-  return ['#b9824a', '#8c5a2c', '#d9a46b'];
-}
-// kleine Kartoffel (Berg, Eimer, Flug)
-function drawMini(c, x, y, s, d, rot = 0) {
-  const rng = mulberry(d.seed);
-  const [base, dark, light] = peelColors(d);
-  c.save(); c.translate(x, y); c.rotate(rot + rng() * 3);
-  c.beginPath(); c.ellipse(0, 0, s * (1.15 + rng() * 0.25), s * (0.8 + rng() * 0.15), 0, 0, Math.PI * 2);
+// kleine Kartoffel (Berg, Eimer, Flug, Wasser)
+function drawMini(c, x, y, s, seed, peeled = false, haze = 0, shade = false) {
+  const rng = mulberry(seed);
+  c.save(); c.translate(x, y); c.rotate(rng() * 6.28);
+  const rx = s * (1.1 + rng() * 0.3), ry = s * (0.75 + rng() * 0.15);
+  c.beginPath(); c.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
   const g = c.createRadialGradient(-s * 0.4, -s * 0.4, s * 0.1, 0, 0, s * 1.4);
-  g.addColorStop(0, light); g.addColorStop(0.55, d.peeled ? '#f3e2a8' : base); g.addColorStop(1, d.peeled ? '#d8bf72' : dark);
-  if (d.peeled) { g.addColorStop(0, '#fff6cf'); }
+  if (peeled) { g.addColorStop(0, '#fff7d2'); g.addColorStop(0.6, '#f0dc95'); g.addColorStop(1, '#c9ad5c'); }
+  else if (shade) { g.addColorStop(0, '#c49a5e'); g.addColorStop(0.5, '#8f673a'); g.addColorStop(1, '#3e2810'); }
+  else { g.addColorStop(0, PEEL[2]); g.addColorStop(0.55, PEEL[0]); g.addColorStop(1, '#5e3f1a'); }
   c.fillStyle = g; c.fill();
-  if (d.rotten && !d.peeled) { c.fillStyle = '#2f3a1c'; for (let i = 0; i < 3; i++) { c.beginPath(); c.arc((rng() - 0.5) * s, (rng() - 0.5) * s * 0.8, s * (0.2 + rng() * 0.2), 0, 7); c.fill(); } }
-  c.fillStyle = '#5e3a1a88'; for (let i = 0; i < 4; i++) { c.beginPath(); c.arc((rng() - 0.5) * s * 1.6, (rng() - 0.5) * s, 1 + s * 0.06, 0, 7); c.fill(); }
+  if (!peeled) { c.fillStyle = '#4a2f1488'; for (let i = 0; i < 4; i++) { c.beginPath(); c.arc((rng() - 0.5) * rx * 1.4, (rng() - 0.5) * ry, 0.8 + s * 0.06, 0, 7); c.fill(); } }
+  if (haze) { c.fillStyle = `rgba(205,218,232,${haze})`; c.beginPath(); c.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2); c.fill(); }
   c.restore();
 }
 
-// große Kartoffel auf dem Brett
+// Eine Seite der Kartoffel auf dem Brett (eigene Schale, eigenes Raster)
+class Side {
+  constructor(bp, rng, eyeCount) {
+    const S = bp.half * 2;
+    this.peel = document.createElement('canvas'); this.peel.width = this.peel.height = S;
+    this.cuts = document.createElement('canvas'); this.cuts.width = this.cuts.height = S;
+    const pc = this.peel.getContext('2d');
+    pc.save(); pc.clip(bp.path);
+    pc.fillStyle = PEEL[0]; pc.fillRect(0, 0, S, S);
+    for (let i = 0; i < 260; i++) { pc.fillStyle = rng() < 0.5 ? '#a9803f30' : '#e2c48830'; pc.beginPath(); pc.arc(rng() * S, rng() * S, 6 + rng() * 22, 0, 7); pc.fill(); }
+    for (let i = 0; i < 500; i++) { pc.fillStyle = rng() < 0.6 ? '#7a552440' : '#f0d9a040'; pc.beginPath(); pc.arc(rng() * S, rng() * S, 0.8 + rng() * 2, 0, 7); pc.fill(); }
+    for (let i = 0; i < 18; i++) { pc.fillStyle = '#3a240e'; pc.beginPath(); pc.ellipse(rng() * S, rng() * S, 1.5 + rng() * 2.5, 1 + rng() * 1.5, rng() * 3, 0, 7); pc.fill(); }
+    pc.restore();
+    this.pc = pc; this.cc = this.cuts.getContext('2d');
+    this.grid = bp.gridTemplate.map(([x, y]) => ({ x, y, on: true, s: -1 }));
+    this.total = this.grid.length; this.left = this.total; this.waste = 0;
+    this.eyes = [];
+    for (let i = 0; i < eyeCount; i++) for (let k = 0; k < 30; k++) {
+      const a = rng() * 6.28, r = 0.15 + rng() * 0.6;
+      const ex = Math.cos(a) * bp.rx * r + bp.half, ey = Math.sin(a) * bp.ry * r + bp.half;
+      if (this.eyes.every(e => Math.hypot(e.x - ex, e.y - ey) > 36)) { this.eyes.push({ x: ex, y: ey, r: 5 + rng() * 3, dug: false, rot: rng() * 6 }); break; }
+    }
+    for (const e of this.eyes) { pc.fillStyle = '#2e1b09'; pc.beginPath(); pc.ellipse(e.x, e.y, e.r, e.r * 0.65, e.rot, 0, 7); pc.fill(); }
+  }
+  get eyesLeft() { return this.eyes.filter(e => !e.dug).length; }
+}
 class BoardPotato {
   constructor(d) {
     this.d = d; const rng = mulberry(d.seed);
-    const R = SIZE_R[d.size];
-    this.R = R;
-    const rx = R * (1.15 + rng() * 0.2), ry = R * (0.78 + rng() * 0.12), rot = (rng() - 0.5) * 0.6;
-    const p1 = rng() * 6, p2 = rng() * 6, p3 = rng() * 6;
-    this.pts = [];
+    const R = SIZE_R[d.size]; this.R = R;
+    this.rx = R * (0.66 + rng() * 0.12); this.ry = R * (1.0 + rng() * 0.12);
+    const p1 = rng() * 6, p2 = rng() * 6, p3 = rng() * 6, rot = (rng() - 0.5) * 0.25;
+    this.half = Math.ceil(this.ry * 1.15) + 6;
+    this.path = new Path2D();
     for (let i = 0; i < 80; i++) {
       const t = i / 80 * Math.PI * 2;
-      const n = 1 + 0.06 * Math.sin(3 * t + p1) + 0.04 * Math.sin(5 * t + p2) + 0.03 * Math.sin(2 * t + p3);
-      const x = Math.cos(t) * rx * n, y = Math.sin(t) * ry * n;
-      this.pts.push([x * Math.cos(rot) - y * Math.sin(rot), x * Math.sin(rot) + y * Math.cos(rot)]);
+      const n = 1 + 0.05 * Math.sin(3 * t + p1) + 0.035 * Math.sin(5 * t + p2) + 0.03 * Math.sin(2 * t + p3);
+      const x = Math.cos(t) * this.rx * n, y = Math.sin(t) * this.ry * n;
+      const X = x * Math.cos(rot) - y * Math.sin(rot) + this.half, Y = x * Math.sin(rot) + y * Math.cos(rot) + this.half;
+      i ? this.path.lineTo(X, Y) : this.path.moveTo(X, Y);
     }
-    this.half = Math.ceil(Math.max(rx, ry) * 1.15) + 6;
-    const S = this.half * 2;
-    this.path = new Path2D();
-    this.pts.forEach(([x, y], i) => i ? this.path.lineTo(x + this.half, y + this.half) : this.path.moveTo(x + this.half, y + this.half));
     this.path.closePath();
-    // Schale
-    this.peel = document.createElement('canvas'); this.peel.width = this.peel.height = S;
-    const pc = this.peel.getContext('2d');
-    const [base, dark, light] = peelColors(d);
-    pc.save(); pc.clip(this.path);
-    pc.fillStyle = base; pc.fillRect(0, 0, S, S);
-    for (let i = 0; i < 900; i++) { pc.fillStyle = rng() < 0.5 ? dark + '55' : light + '44'; pc.beginPath(); pc.arc(rng() * S, rng() * S, 1 + rng() * 3.5, 0, 7); pc.fill(); }
-    for (let i = 0; i < 40; i++) { pc.strokeStyle = dark + '66'; pc.lineWidth = 1; pc.beginPath(); const x = rng() * S, y = rng() * S; pc.moveTo(x, y); pc.quadraticCurveTo(x + rng() * 20 - 10, y + rng() * 20 - 10, x + rng() * 30 - 15, y + rng() * 30 - 15); pc.stroke(); }
-    if (d.rotten) {
-      this.rotSpots = [];
-      for (let i = 0; i < 5 + rng() * 4; i++) {
-        const a = rng() * 6.28, r = rng() * 0.7;
-        const sx = Math.cos(a) * rx * r + this.half, sy = Math.sin(a) * ry * r + this.half, sr = R * (0.12 + rng() * 0.22);
-        this.rotSpots.push([sx, sy, sr]);
-        const g = pc.createRadialGradient(sx, sy, 0, sx, sy, sr);
-        g.addColorStop(0, '#1d2410'); g.addColorStop(0.6, '#3c4a1ccc'); g.addColorStop(1, '#3c4a1c00');
-        pc.fillStyle = g; pc.beginPath(); pc.arc(sx, sy, sr, 0, 7); pc.fill();
-      }
-    }
-    pc.restore();
-    this.pc = pc;
-    // Raster zur Fortschrittsmessung
-    const tc = document.createElement('canvas').getContext('2d');
-    this.grid = []; const step = 7;
-    for (let y = step / 2; y < S; y += step) for (let x = step / 2; x < S; x += step) if (tc.isPointInPath(this.path, x, y)) this.grid.push({ x, y, on: true });
-    this.left = this.grid.length; this.total = this.grid.length;
-    // Augen
-    this.eyes = [];
-    for (let i = 0; i < d.eyes; i++) {
-      for (let tries = 0; tries < 30; tries++) {
-        const a = rng() * 6.28, r = 0.2 + rng() * 0.55;
-        const ex = Math.cos(a) * rx * r + this.half, ey = Math.sin(a) * ry * r + this.half;
-        if (this.eyes.every(e => Math.hypot(e.x - ex, e.y - ey) > 40)) { this.eyes.push({ x: ex, y: ey, r: 6 + rng() * 4, dug: false, rot: rng() * 6 }); break; }
-      }
-    }
-    for (const e of this.eyes) { pc.fillStyle = '#4a2c12'; pc.beginPath(); pc.ellipse(e.x, e.y, e.r * 0.8, e.r * 0.5, e.rot, 0, 7); pc.fill(); }
-    this.x = BOARD.cx; this.y = BOARD.cy; this.spawn = 0; this.wobble = 0;
+    const tc = document.createElement('canvas').getContext('2d'), S = this.half * 2, step = 7;
+    this.gridTemplate = [];
+    for (let y = step / 2; y < S; y += step) for (let x = step / 2; x < S; x += step) if (tc.isPointInPath(this.path, x, y)) this.gridTemplate.push([x, y]);
+    this.sides = [new Side(this, rng, Math.ceil(d.eyes / 2)), new Side(this, rng, Math.floor(d.eyes / 2))];
+    this.cur = 0; this.flipT = 0; this.spawn = 0; this.wobble = 0; this.stroke = 0;
+    this.x = BOARD.cx; this.y = BOARD.cy;
   }
-  get progress() { return 1 - this.left / this.total; }
-  get eyesLeft() { return this.eyes.filter(e => !e.dug).length; }
-  toLocal(p) { return { x: p.x - this.x + this.half, y: p.y - this.y + this.half }; }
-  cut(a, b, rad) {
+  get side() { return this.sides[this.cur]; }
+  get progress() { const t = this.sides[0].total + this.sides[1].total; return 1 - (this.sides[0].left + this.sides[1].left) / t; }
+  sideProgress(i) { const s = this.sides[i]; return 1 - s.left / s.total; }
+  get wasteFrac() { const t = this.sides[0].total + this.sides[1].total; return clamp((this.sides[0].waste + this.sides[1].waste) / t, 0, 0.9); }
+  get eyesLeft() { return this.sides[0].eyesLeft + this.sides[1].eyesLeft; }
+  get scale() { return 1 - this.wasteFrac * 0.45; }
+  flip() { if (this.flipT > 0) return; this.flipT = 0.0001; sfx.flip(); }
+  toLocal(p) { const s = this.scale; return { x: (p.x - this.x) / s + this.half, y: (p.y - this.y) / s + this.half }; }
+  cut(a, b, t) {
+    if (this.flipT > 0) return [0, 0];
+    const s = this.scale, rad = t.r / s, side = this.side;
     const A = this.toLocal(a), B = this.toLocal(b);
-    const pc = this.pc;
-    pc.save(); pc.globalCompositeOperation = 'destination-out';
-    pc.lineCap = 'round'; pc.lineWidth = rad * 2; pc.beginPath(); pc.moveTo(A.x, A.y); pc.lineTo(B.x + 0.01, B.y); pc.stroke(); pc.restore();
     const dx = B.x - A.x, dy = B.y - A.y, L = dx * dx + dy * dy || 1;
-    let removed = 0;
-    for (const g of this.grid) {
-      if (!g.on) continue;
-      const t = clamp(((g.x - A.x) * dx + (g.y - A.y) * dy) / L, 0, 1);
-      const ex = A.x + dx * t - g.x, ey = A.y + dy * t - g.y;
-      if (ex * ex + ey * ey <= rad * rad) { g.on = false; removed++; }
+    let removed = 0, over = 0;
+    for (const g of side.grid) {
+      const k = clamp(((g.x - A.x) * dx + (g.y - A.y) * dy) / L, 0, 1);
+      const ex = A.x + dx * k - g.x, ey = A.y + dy * k - g.y;
+      if (ex * ex + ey * ey > rad * rad) continue;
+      if (g.on) { g.on = false; removed++; side.waste += t.waste; g.s = this.stroke; }
+      else if (g.s !== this.stroke) { g.s = this.stroke; over++; side.waste += t.over; }
     }
-    this.left -= removed;
-    return removed;
+    side.left -= removed;
+    const pc = side.pc;
+    pc.save(); pc.globalCompositeOperation = 'destination-out'; pc.lineCap = 'round'; pc.lineWidth = rad * 2;
+    pc.beginPath(); pc.moveTo(A.x, A.y); pc.lineTo(B.x + 0.01, B.y); pc.stroke(); pc.restore();
+    if (over) { // Schnittspuren im Fruchtfleisch
+      const cc = side.cc; cc.save(); cc.clip(this.path); cc.lineCap = 'round';
+      cc.strokeStyle = 'rgba(190,150,60,0.10)'; cc.lineWidth = rad * 2; cc.beginPath(); cc.moveTo(A.x, A.y); cc.lineTo(B.x + 0.01, B.y); cc.stroke();
+      cc.strokeStyle = 'rgba(255,255,230,0.18)'; cc.lineWidth = 1.5; cc.beginPath(); cc.moveTo(A.x, A.y - rad * 0.7); cc.lineTo(B.x, B.y - rad * 0.7); cc.stroke();
+      cc.restore();
+    }
+    return [removed, over];
   }
-  peeledAt(lx, ly) { // ist die Schale an dieser Stelle weg?
-    let best = null, bd = 1e9;
-    for (const g of this.grid) { const d = (g.x - lx) ** 2 + (g.y - ly) ** 2; if (d < bd) { bd = d; best = g; } }
-    return best && !best.on;
+  peeledAt(lx, ly) { let best = null, bd = 1e9; for (const g of this.side.grid) { const d = (g.x - lx) ** 2 + (g.y - ly) ** 2; if (d < bd) { bd = d; best = g; } } return best && !best.on; }
+  update(dt) {
+    this.spawn += dt; this.wobble = Math.max(0, this.wobble - dt);
+    if (this.flipT > 0) { const before = this.flipT; this.flipT += dt * 3.2; if (before < 0.5 && this.flipT >= 0.5) this.cur = 1 - this.cur; if (this.flipT >= 1) this.flipT = 0; }
   }
   draw(c) {
-    const s = Math.min(1, this.spawn * 4), sc = 0.6 + 0.4 * (1 - Math.pow(1 - s, 3)) + Math.sin(this.wobble * 30) * this.wobble * 0.08;
-    c.save(); c.translate(this.x, this.y); c.scale(sc, sc); c.translate(-this.half, -this.half);
-    // Schatten
-    c.save(); c.translate(10, 16); c.fillStyle = '#0005'; c.filter = 'blur(8px)'; c.fill(this.path); c.restore();
-    // Fruchtfleisch
-    const R = this.R, h = this.half;
-    let g = c.createRadialGradient(h - R * 0.4, h - R * 0.4, R * 0.1, h, h, R * 1.5);
-    if (this.d.gold) { g.addColorStop(0, '#fff7d0'); g.addColorStop(1, '#f2c64a'); }
-    else { g.addColorStop(0, '#fff6d2'); g.addColorStop(0.7, '#f2dc93'); g.addColorStop(1, '#d8b866'); }
+    const sp = Math.min(1, this.spawn * 4), s = this.scale * (0.6 + 0.4 * (1 - Math.pow(1 - sp, 3)));
+    const sx = this.flipT > 0 ? Math.max(0.04, Math.abs(Math.cos(this.flipT * Math.PI))) : 1;
+    c.save(); c.fillStyle = '#0006'; c.filter = 'blur(10px)'; c.beginPath(); c.ellipse(this.x + 10, this.y + this.ry * s + 30, this.rx * s * sx * 1.05, 16, 0, 0, 7); c.fill(); c.restore();
+    c.save(); c.translate(this.x, this.y); c.scale(s * sx, s + Math.sin(this.wobble * 30) * this.wobble * 0.08); c.translate(-this.half, -this.half);
+    const side = this.side, R = this.R, h = this.half;
+    let g = c.createRadialGradient(h - R * 0.3, h - R * 0.45, R * 0.1, h, h, R * 1.3);
+    g.addColorStop(0, '#fffbe0'); g.addColorStop(0.55, '#f3e29c'); g.addColorStop(1, '#d4b55e');
     c.fillStyle = g; c.fill(this.path);
-    if (this.rotSpots) for (const [x, y, r] of this.rotSpots) {
-      const gg = c.createRadialGradient(x, y, 0, x, y, r * 0.8); gg.addColorStop(0, '#4b4a2c'); gg.addColorStop(1, '#6b6a3c00');
-      c.fillStyle = gg; c.beginPath(); c.arc(x, y, r * 0.8, 0, 7); c.fill();
+    c.drawImage(side.cuts, 0, 0);
+    for (const e of side.eyes) {
+      if (e.dug) { c.fillStyle = '#e6cd80'; c.beginPath(); c.arc(e.x, e.y, e.r + 3, 0, 7); c.fill(); c.strokeStyle = '#bfa152'; c.lineWidth = 2; c.stroke(); }
+      else { c.fillStyle = '#3a220c'; c.beginPath(); c.ellipse(e.x, e.y, e.r + 1, (e.r + 1) * 0.7, e.rot, 0, 7); c.fill(); c.fillStyle = '#8a6a3a'; c.beginPath(); c.arc(e.x + 1.5, e.y - 1.5, 1.8, 0, 7); c.fill(); }
     }
-    for (const e of this.eyes) {
-      if (e.dug) { c.fillStyle = '#e3c97e'; c.beginPath(); c.arc(e.x, e.y, e.r + 2, 0, 7); c.fill(); c.strokeStyle = '#c4a75a'; c.lineWidth = 2; c.stroke(); }
-      else { c.fillStyle = '#3b230d'; c.beginPath(); c.ellipse(e.x, e.y, e.r, e.r * 0.7, e.rot, 0, 7); c.fill(); c.fillStyle = '#b6c46a'; c.beginPath(); c.arc(e.x + 2, e.y - 2, 2.5, 0, 7); c.fill(); }
-    }
-    c.drawImage(this.peel, 0, 0);
-    // Glanz/Volumen
-    g = c.createRadialGradient(h - R * 0.45, h - R * 0.5, 0, h, h, R * 1.4);
-    g.addColorStop(0, '#ffffff38'); g.addColorStop(0.45, '#ffffff00'); g.addColorStop(1, '#00000055');
+    c.drawImage(side.peel, 0, 0);
+    g = c.createRadialGradient(h - R * 0.35, h - R * 0.6, 0, h, h, R * 1.25);
+    g.addColorStop(0, '#ffffff40'); g.addColorStop(0.4, '#ffffff00'); g.addColorStop(1, '#2a160066');
     c.fillStyle = g; c.fill(this.path);
     c.restore();
   }
 }
 
-// ---------- Hintergrund (einmal vorrendern) ----------
-let bgCanvas = null;
-function buildBackground() {
-  const b = document.createElement('canvas'); b.width = W; b.height = H;
-  const c = b.getContext('2d'); const rng = mulberry(42);
-  // Himmel + Schneeberge (links)
-  let g = c.createLinearGradient(0, 0, 0, 500); g.addColorStop(0, '#7f9fc0'); g.addColorStop(1, '#d9e3ec');
-  c.fillStyle = g; c.fillRect(0, 0, 390, H);
-  c.fillStyle = '#9fb0c2'; c.beginPath(); c.moveTo(0, 300); c.lineTo(70, 170); c.lineTo(140, 250); c.lineTo(230, 130); c.lineTo(330, 260); c.lineTo(390, 200); c.lineTo(390, 500); c.lineTo(0, 500); c.fill();
-  c.fillStyle = '#f2f6fa'; c.beginPath(); c.moveTo(48, 210); c.lineTo(70, 170); c.lineTo(95, 205); c.lineTo(80, 200); c.lineTo(70, 215); c.fill();
-  c.beginPath(); c.moveTo(200, 172); c.lineTo(230, 130); c.lineTo(262, 175); c.lineTo(242, 168); c.lineTo(228, 185); c.fill();
-  // Tannen
-  for (let i = 0; i < 9; i++) { const x = rng() * 380, y = 330 + rng() * 60, s = 18 + rng() * 22; c.fillStyle = '#2f4a3d'; c.beginPath(); c.moveTo(x, y - s * 2.2); c.lineTo(x - s * 0.7, y); c.lineTo(x + s * 0.7, y); c.fill(); c.fillStyle = '#e8eef4'; c.beginPath(); c.moveTo(x, y - s * 2.2); c.lineTo(x - s * 0.25, y - s * 1.4); c.lineTo(x + s * 0.25, y - s * 1.4); c.fill(); }
-  c.fillStyle = '#e9eef3'; c.fillRect(0, 470, 390, 250);
-  // Kartoffelberg
+// ================= Hintergründe (einmal vorgerendert) =================
+const BG = [];
+function mk() { const b = document.createElement('canvas'); b.width = W; b.height = H; return [b, b.getContext('2d')]; }
+function buildBackgrounds() {
+  let [b, c] = mk(), rng = mulberry(7);
+  // --- 0: Berg draußen im Schnee ---
+  let g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#8fb0d0'); g.addColorStop(0.6, '#d7e2ec'); g.addColorStop(1, '#eef2f6');
+  c.fillStyle = g; c.fillRect(0, 0, W, H);
+  c.fillStyle = '#a7b8c9'; c.beginPath(); c.moveTo(0, 380); c.lineTo(120, 250); c.lineTo(230, 330); c.lineTo(330, 230); c.lineTo(420, 320); c.lineTo(860, 320); c.lineTo(980, 210); c.lineTo(1090, 300); c.lineTo(1180, 240); c.lineTo(1280, 330); c.lineTo(1280, 500); c.lineTo(0, 500); c.fill();
+  c.fillStyle = '#f4f7fa'; for (const [x, y] of [[120, 250], [330, 230], [980, 210], [1180, 240]]) { c.beginPath(); c.moveTo(x - 30, y + 35); c.lineTo(x, y); c.lineTo(x + 32, y + 36); c.lineTo(x + 10, y + 28); c.lineTo(x - 5, y + 42); c.fill(); }
+  for (let i = 0; i < 16; i++) { const x = rng() < 0.5 ? rng() * 260 : 1020 + rng() * 260, y = 380 + rng() * 120, s = 16 + rng() * 26; c.fillStyle = '#2c4639'; c.beginPath(); c.moveTo(x, y - s * 2.4); c.lineTo(x - s * 0.7, y); c.lineTo(x + s * 0.7, y); c.fill(); c.fillStyle = '#e8eef4cc'; c.beginPath(); c.moveTo(x, y - s * 2.4); c.lineTo(x - s * 0.3, y - s * 1.5); c.lineTo(x + s * 0.3, y - s * 1.5); c.fill(); }
+  c.fillStyle = '#eef2f6'; c.fillRect(0, 470, W, 250);
+  // riesiger Kartoffelberg
   const pile = [];
-  for (let i = 0; i < 520; i++) {
-    const y = 115 + Math.pow(rng(), 0.6) * 380; const half = (y - 105) * 0.52;
-    const x = 185 + (rng() * 2 - 1) * half; pile.push([x, y, 8 + rng() * 9]);
-  }
+  c.fillStyle = '#3e2a14'; c.beginPath(); c.moveTo(640, 48); c.lineTo(1290, 720); c.lineTo(-10, 720); c.closePath(); c.fill();
+  for (let i = 0; i < 6500; i++) { const y = 50 + Math.sqrt(rng()) * 690; const half = (y - 45) * 0.93; pile.push([640 + (rng() * 2 - 1) * half, y]); }
   pile.sort((a, b) => a[1] - b[1]);
-  for (const [x, y, s] of pile) drawMini(c, x, y, s, { seed: (rng() * 1e9) | 0, rotten: rng() < 0.03 });
-  // Küche (Mitte + rechts)
-  g = c.createLinearGradient(390, 0, 390, H); g.addColorStop(0, '#2c3b33'); g.addColorStop(1, '#1b231f');
-  c.fillStyle = g; c.fillRect(390, 0, W - 390, H);
-  c.strokeStyle = '#ffffff0a'; c.lineWidth = 2;
-  for (let y = 20; y < 160; y += 34) for (let x = 390 + (y / 34 % 2) * 30; x < W; x += 60) c.strokeRect(x, y, 60, 34);
-  // Arbeitsplatte
-  g = c.createLinearGradient(0, 95, 0, H); g.addColorStop(0, '#80868a'); g.addColorStop(1, '#4a4f53');
-  c.fillStyle = g; c.fillRect(380, 98, 545, H - 98);
-  c.fillStyle = '#aab0b4'; c.fillRect(380, 98, 545, 6);
-  // Brett
-  c.save(); c.shadowColor = '#0008'; c.shadowBlur = 25; c.shadowOffsetY = 10;
-  g = c.createLinearGradient(BOARD.x, 0, BOARD.x + BOARD.w, 0); g.addColorStop(0, '#c48a52'); g.addColorStop(0.5, '#d9a066'); g.addColorStop(1, '#b97f48');
-  c.fillStyle = g; c.beginPath(); c.roundRect(BOARD.x, BOARD.y, BOARD.w, BOARD.h, 18); c.fill(); c.restore();
-  c.strokeStyle = '#a36d3a55'; c.lineWidth = 1.5;
-  for (let i = 0; i < 26; i++) { const y = BOARD.y + 10 + rng() * (BOARD.h - 20); c.beginPath(); c.moveTo(BOARD.x + 10, y); for (let x = BOARD.x + 10; x < BOARD.x + BOARD.w - 10; x += 20) c.lineTo(x, y + Math.sin(x * 0.02 + i) * 3); c.stroke(); }
-  for (let i = 0; i < 40; i++) { c.strokeStyle = '#7a4d2433'; c.beginPath(); const x = BOARD.x + 20 + rng() * (BOARD.w - 40), y = BOARD.y + 20 + rng() * (BOARD.h - 40); c.moveTo(x, y); c.lineTo(x + rng() * 50 - 25, y + rng() * 10 - 5); c.stroke(); }
-  // Reservoir-Paneel
-  c.save(); c.shadowColor = '#000a'; c.shadowBlur = 20;
-  g = c.createLinearGradient(0, RES.y, 0, RES.y + RES.h); g.addColorStop(0, '#3e5a4c'); g.addColorStop(1, '#253a30');
-  c.fillStyle = g; c.beginPath(); c.roundRect(RES.x, RES.y, RES.w, RES.h, 12); c.fill(); c.restore();
-  c.fillStyle = '#9ba39e'; for (const [x, y] of [[RES.x + 12, RES.y + 12], [RES.x + RES.w - 12, RES.y + 12], [RES.x + 12, RES.y + RES.h - 12], [RES.x + RES.w - 12, RES.y + RES.h - 12]]) { c.beginPath(); c.arc(x, y, 5, 0, 7); c.fill(); }
-  c.fillStyle = '#1b2721'; c.beginPath(); c.roundRect(RES.x + 70, RES.y + 30, 190, 58, 6); c.fill();
-  c.fillStyle = '#d6e6dc'; c.font = 'bold 20px system-ui'; c.textAlign = 'center'; c.fillText('RESERVOIR Nr. 5', RES.x + 165, RES.y + 56);
-  c.font = '12px system-ui'; c.fillStyle = '#a8bdb0'; c.fillText('nur geschälte Ware', RES.x + 165, RES.y + 76);
-  // Luke
-  const hz = RES.hatch;
-  c.fillStyle = '#111'; c.beginPath(); c.roundRect(hz.x, hz.y, hz.w, hz.h, 8); c.fill();
-  c.strokeStyle = '#8b958f'; c.lineWidth = 4; c.stroke();
-  c.strokeStyle = '#ffffff22'; c.lineWidth = 2; for (let x = hz.x + 14; x < hz.x + hz.w; x += 16) { c.beginPath(); c.moveTo(x, hz.y + 6); c.lineTo(x, hz.y + hz.h - 6); c.stroke(); }
-  // Maschinenbereich
-  c.fillStyle = '#151c18'; c.beginPath(); c.roundRect(MACH.x, MACH.y, MACH.w, MACH.h, 12); c.fill();
-  c.strokeStyle = '#ffffff14'; c.lineWidth = 2; c.stroke();
-  bgCanvas = b;
+  for (const [x, y] of pile) { const t = (y - 50) / 670; drawMini(c, x, y, 3 + t * 15, (rng() * 1e9) | 0, false, (1 - t) * 0.3, true); }
+  c.fillStyle = '#ffffffaa'; for (let i = 0; i < 220; i++) { const [x, y] = pile[(rng() * pile.length) | 0]; c.beginPath(); c.arc(x, y - 3, 1 + rng() * 2, 0, 7); c.fill(); }
+  BG[0] = b;
+
+  // --- 1: Küche (dunkle Armeeküche) ---
+  [b, c] = mk(); rng = mulberry(11);
+  g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#1d2620'); g.addColorStop(1, '#0d100e'); c.fillStyle = g; c.fillRect(0, 0, W, H);
+  c.strokeStyle = '#ffffff08'; c.lineWidth = 2; for (let y = 0; y < 280; y += 30) for (let x = (y / 30 % 2) * 25; x < W; x += 50) c.strokeRect(x, y, 50, 30);
+  c.fillStyle = '#2a2018'; c.fillRect(80, 170, 1120, 10); c.fillRect(80, 95, 1120, 8);
+  for (let i = 0; i < 14; i++) { const x = 110 + i * 80 + rng() * 20, w = 30 + rng() * 30, h = 20 + rng() * 40; c.fillStyle = rng() < 0.5 ? '#3a3a36' : '#4a3a28'; c.beginPath(); c.roundRect(x, 170 - h, w, h, 4); c.fill(); }
+  for (let i = 0; i < 18; i++) { const x = 100 + i * 62; c.strokeStyle = '#4c4c48'; c.lineWidth = 3; c.beginPath(); c.moveTo(x, 103); c.lineTo(x, 135 + rng() * 15); c.stroke(); }
+  c.fillStyle = '#2b2e2c'; c.fillRect(0, 250, W, 40); c.fillStyle = '#3d413e'; c.fillRect(0, 250, W, 5);
+  g = c.createRadialGradient(735, 260, 30, 735, 330, 620); g.addColorStop(0, '#ffcf8a40'); g.addColorStop(1, '#00000000'); c.fillStyle = g; c.fillRect(0, 0, W, H);
+  g = c.createLinearGradient(0, 290, 0, H); g.addColorStop(0, '#5a5f5c'); g.addColorStop(1, '#262927'); c.fillStyle = g; c.fillRect(0, 290, W, H - 290);
+  c.fillStyle = '#7d827f'; c.fillRect(0, 290, W, 4);
+  // großer Topfdeckel hinten (wie im Video)
+  c.fillStyle = '#151515'; c.beginPath(); c.ellipse(540, 300, 70, 70, 0, 0, 7); c.fill(); c.strokeStyle = '#333'; c.lineWidth = 4; c.stroke();
+  c.fillStyle = '#2c2c2c'; c.fillRect(490, 296, 50, 8);
+  // Schneidebrett (perspektivisch)
+  c.save(); c.shadowColor = '#000a'; c.shadowBlur = 25; c.shadowOffsetY = 10;
+  g = c.createLinearGradient(0, 470, 0, 660); g.addColorStop(0, '#b77a43'); g.addColorStop(1, '#8f5a2c'); c.fillStyle = g;
+  c.beginPath(); c.moveTo(500, 470); c.lineTo(970, 470); c.lineTo(1020, 660); c.lineTo(450, 660); c.closePath(); c.fill(); c.restore();
+  c.strokeStyle = '#6b3f1c55'; c.lineWidth = 1.2; for (let i = 0; i < 30; i++) { const t = rng(); c.beginPath(); c.moveTo(lerp(500, 450, t), lerp(470, 660, t)); c.lineTo(lerp(970, 1020, t), lerp(470, 660, t) + rng() * 4 - 2); c.stroke(); }
+  c.fillStyle = '#6e4220'; c.beginPath(); c.moveTo(450, 660); c.lineTo(1020, 660); c.lineTo(1020, 676); c.lineTo(450, 676); c.fill();
+  // Ablage für rohe Kartoffeln (Blechwanne)
+  c.save(); c.shadowColor = '#000a'; c.shadowBlur = 18;
+  g = c.createLinearGradient(TRAY.x, 0, TRAY.x + TRAY.w, 0); g.addColorStop(0, '#5c615f'); g.addColorStop(0.5, '#8d9390'); g.addColorStop(1, '#4b4f4d');
+  c.fillStyle = g; c.beginPath(); c.moveTo(TRAY.x + 20, TRAY.y); c.lineTo(TRAY.x + TRAY.w - 20, TRAY.y); c.lineTo(TRAY.x + TRAY.w, TRAY.y + TRAY.h); c.lineTo(TRAY.x, TRAY.y + TRAY.h); c.closePath(); c.fill(); c.restore();
+  c.fillStyle = '#1e201f'; c.beginPath(); c.moveTo(TRAY.x + 38, TRAY.y + 16); c.lineTo(TRAY.x + TRAY.w - 38, TRAY.y + 16); c.lineTo(TRAY.x + TRAY.w - 22, TRAY.y + TRAY.h - 18); c.lineTo(TRAY.x + 22, TRAY.y + TRAY.h - 18); c.closePath(); c.fill();
+  BG[1] = b;
+
+  // --- 2: Reservoir Nr. 5 ---
+  [b, c] = mk();
+  g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#24302a'); g.addColorStop(1, '#101612'); c.fillStyle = g; c.fillRect(0, 0, W, H);
+  c.strokeStyle = '#ffffff07'; for (let x = 0; x < W; x += 80) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x, 470); c.stroke(); }
+  c.fillStyle = '#3b3a33'; c.beginPath(); c.arc(640, 120, 104, 0, 7); c.fill();
+  g = c.createRadialGradient(620, 100, 10, 640, 120, 90); g.addColorStop(0, '#a8b9c4'); g.addColorStop(1, '#45535b'); c.fillStyle = g; c.beginPath(); c.arc(640, 120, 86, 0, 7); c.fill();
+  c.save(); c.beginPath(); c.arc(640, 120, 86, 0, 7); c.clip(); c.strokeStyle = '#2a2a24'; c.lineWidth = 5; for (let i = -3; i <= 3; i++) { c.beginPath(); c.moveTo(640 + i * 24, 30); c.lineTo(640 + i * 24, 210); c.stroke(); } c.restore();
+  c.fillStyle = '#6d6a5d'; for (let i = 0; i < 12; i++) { const a = i / 12 * 6.28; c.beginPath(); c.arc(640 + Math.cos(a) * 96, 120 + Math.sin(a) * 96, 4, 0, 7); c.fill(); }
+  c.fillStyle = '#2f4a3c'; c.beginPath(); c.roundRect(470, 250, 340, 100, 8); c.fill(); c.strokeStyle = '#5c7d6b'; c.lineWidth = 3; c.stroke();
+  c.fillStyle = '#cfe0d4'; c.textAlign = 'center'; c.font = 'bold 32px system-ui'; c.fillText('РЕЗЕРВУАР №5', 640, 292);
+  c.font = 'bold 15px system-ui'; c.fillStyle = '#9fbcaa'; c.fillText('ЧИСТЫЙ ПРОДУКТ', 640, 316);
+  c.font = '13px system-ui'; c.fillStyle = '#7f9a8a'; c.fillText('Reservoir Nr. 5 · nur saubere Ware', 640, 337);
+  c.fillStyle = '#1b1d1b'; c.fillRect(470, 370, 340, 70); c.strokeStyle = '#3e403d'; c.lineWidth = 2; c.strokeRect(470, 370, 340, 70);
+  c.fillStyle = '#2a2c2a'; for (let i = 0; i < 9; i++) c.fillRect(490 + i * 34, 385, 20, 40);
+  c.fillStyle = '#4d524f'; c.beginPath(); c.moveTo(60, 470); c.lineTo(1220, 470); c.lineTo(1280, 720); c.lineTo(0, 720); c.closePath(); c.fill();
+  c.fillStyle = '#7f8582'; c.fillRect(60, 466, 1160, 8);
+  BG[2] = b;
+
+  // --- 3: Maschinenhalle ---
+  [b, c] = mk(); rng = mulberry(3);
+  g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#1a1210'); g.addColorStop(1, '#0a0807'); c.fillStyle = g; c.fillRect(0, 0, W, H);
+  for (let y = 20; y < 460; y += 26) for (let x = (y / 26 % 2) * 30; x < W; x += 60) { c.fillStyle = `rgba(${90 + rng() * 30},${40 + rng() * 15},30,0.25)`; c.fillRect(x + 2, y + 2, 56, 22); }
+  c.fillStyle = '#5a0f0f33'; c.fillRect(0, 0, W, 460);
+  for (const x of [180, 1000]) { c.fillStyle = '#4a0c0c'; c.fillRect(x, 60, 120, 170); c.strokeStyle = '#111'; c.lineWidth = 4; for (let i = 1; i < 4; i++) { c.beginPath(); c.moveTo(x + i * 30, 60); c.lineTo(x + i * 30, 230); c.stroke(); } for (let i = 1; i < 5; i++) { c.beginPath(); c.moveTo(x, 60 + i * 34); c.lineTo(x + 120, 60 + i * 34); c.stroke(); } }
+  g = c.createLinearGradient(0, 460, 0, H); g.addColorStop(0, '#2a2522'); g.addColorStop(1, '#141110'); c.fillStyle = g; c.fillRect(0, 460, W, 260);
+  BG[3] = b;
 }
 
-// ---------- Spielzustand ----------
-let state = 'menu'; // menu | play | pause | end
+// ================= Spielzustand =================
+let state = 'menu';
 let G = null;
 const mouse = { x: 0, y: 0, down: false, last: null, over: false };
 const particles = [], popups = [], flyers = [];
-
 function startLevel(n) {
-  const cfg = levelCfg(n);
-  G = {
-    level: n, cfg, time: cfg.time + U('thermos'), maxTime: cfg.time + U('thermos'),
-    done: 0, earned: 0, bucket: [], board: null, streak: 0, perfects: 0, rottenOk: 0,
-    beltT: 0, beltAnim: 0, machines: Array.from({ length: U('maschinen') }, () => ({ p: null, t: 0, anim: 0 })),
-    shake: 0, msg: null, lights: 0, hatchOpen: 0,
-  };
+  const cfg = levelCfg(n), t = cfg.time + U('tee');
+  G = { level: n, cfg, time: t, maxTime: t, done: 0, earned: 0, bucket: [], tray: [], board: null, perfects: 0, wasteSum: 0, handDone: 0,
+        floaters: [], machines: Array.from({ length: U('trommel') }, () => ({ hopper: 0, batch: 0, t: 0, spin: 0 })), beltT: 0, beltAnim: 0, lights: 0, msg: null };
   particles.length = popups.length = flyers.length = 0;
-  for (let i = 0; i < Math.min(2, U('eimer')); i++) G.bucket.push(newPotatoData(cfg));
+  cam.st = 0; cam.x = cam.target = 0;
   state = 'play'; showOv(null);
-  say(`Level ${n}: ${cfg.quota} Kartoffeln schälen!`, 2.5);
+  say(`Tag ${n}: Die Armee braucht ${cfg.quota} geschälte Kartoffeln!`, 3);
 }
-function say(text, dur = 1.6, color = '#fff') { G.msg = { text, t: dur, color }; }
+function say(text, dur = 1.6, color = '#fff') { if (G) G.msg = { text, t: dur, color }; }
 function popup(x, y, text, color = '#ffc83d', size = 28) { popups.push({ x, y, text, color, size, t: 0 }); }
 
-function grabFromMountain() {
-  if (state !== 'play') return;
-  const cap = U('eimer'), n = U('schaufel');
-  const pending = flyers.filter(f => f.kind === 'toBucket').length;
+function grab(p) {
+  const cap = U('eimer'), pending = flyers.filter(f => f.kind === 'toBucket').length;
   let added = 0;
-  for (let i = 0; i < n && G.bucket.length + pending + added < cap; i++) {
-    const d = newPotatoData(G.cfg);
-    flyers.push({ kind: 'toBucket', d, fx: mouse.over && inRect(mouse, MOUNT) ? mouse.x : rand(120, 250), fy: mouse.over && inRect(mouse, MOUNT) ? mouse.y : rand(200, 400), tx: BUCKET.x + rand(-40, 40), ty: BUCKET.y - 40, t: -i * 0.08, dur: 0.45, s: 16 });
+  for (let i = 0; i < U('schaufel') && G.bucket.length + pending + added < cap; i++) {
+    flyers.push({ kind: 'toBucket', d: newPotato(G.cfg), fx: p.x + rand(-15, 15), fy: p.y, tx: BUCKET_POS.x + rand(-60, 60), ty: BUCKET_POS.y, t: -i * 0.07, dur: 0.45, s: 14 });
     added++;
   }
-  if (added) sfx.pop(); else { say('Eimer ist voll!', 1); sfx.bad(); }
+  if (added) sfx.grab(); else { say('Der Eimer ist voll – ab in die Küche! (2)', 1.4); sfx.bad(); }
 }
-function bucketToBoard() {
-  if (state !== 'play') return;
-  if (G.board) { say('Erst die Kartoffel auf dem Brett fertig machen!', 1.2); return; }
-  if (!G.bucket.length) { say('Eimer ist leer – klick auf den Berg!', 1.3); sfx.bad(); return; }
-  const d = G.bucket.pop();
-  flyers.push({ kind: 'toBoard', d, fx: BUCKET.x, fy: BUCKET.y - 40, tx: BOARD.cx, ty: BOARD.cy, t: 0, dur: 0.3, s: 20 });
+function trayAction() {
+  if (G.bucket.length) {
+    const n = G.bucket.length; G.tray.push(...G.bucket); G.bucket = [];
+    sfx.clank(); popup(TRAY.x + TRAY.w / 2, TRAY.y - 10, `+${n} roh`, '#fff', 22);
+    if (G.board) return;
+  }
+  if (G.board) { say('Erst die Kartoffel auf dem Brett fertig schälen!', 1.2); return; }
+  if (!G.tray.length) { say('Keine Kartoffeln da – hol welche vom Berg! (1)', 1.5); sfx.bad(); return; }
+  const d = G.tray.pop();
+  flyers.push({ kind: 'toBoard', d, fx: TRAY.x + TRAY.w / 2, fy: TRAY.y + 60, tx: BOARD.cx, ty: BOARD.cy, t: 0, dur: 0.3, s: 18 });
   sfx.pop();
 }
-function quality() {
-  const b = G.board; if (!b) return 0;
-  const p = b.progress;
-  let q = lerp(0.6, 1, clamp((p - 0.8) / 0.19, 0, 1)) - 0.15 * b.eyesLeft;
-  return Math.max(0.1, q);
+function canThrow() { return G.board && G.board.spawn > 0.25 && G.board.flipT === 0 && G.board.progress >= 0.8; }
+function payFor(d, waste, peel, eyes) {
+  const peelF = lerp(0.7, 1, clamp((peel - 0.8) / 0.18, 0, 1));
+  return Math.max(1, Math.round(8 * SIZE_PAY[d.size] * G.cfg.pay * (1 - waste) * Math.max(0.2, peelF - 0.15 * eyes)));
 }
-function canDeliver() { return G.board && G.board.spawn > 0.25 && G.board.progress >= 0.8; }
-function deliver() {
-  if (state !== 'play' || !G.board) return;
+function throwInWater() {
+  if (state !== 'play' || !G.board || cam.st !== 1) return;
   const b = G.board;
-  if (!canDeliver()) { say(`Noch nicht genug geschält (${Math.floor(b.progress * 100)} % / 80 %)`, 1.3); sfx.bad(); return; }
+  if (!canThrow()) {
+    if (b.progress < 0.8) say(`Noch nicht sauber genug: ${Math.floor(b.progress * 100)} % von mind. 80 % (beide Seiten!)`, 1.6);
+    sfx.bad(); return;
+  }
   G.board = null;
-  flyers.push({ kind: 'toRes', d: Object.assign({}, b.d, { peeled: true }), fx: b.x, fy: b.y, tx: RES.hatch.x + RES.hatch.w / 2, ty: RES.hatch.y + RES.hatch.h / 2, t: 0, dur: 0.4, s: b.R * 0.3,
+  const waste = b.wasteFrac, peel = b.progress, eyes = b.eyesLeft;
+  const perfect = peel >= 0.98 && eyes === 0 && waste < 0.15;
+  let pay = payFor(b.d, waste, peel, eyes); if (perfect) pay = Math.round(pay * 1.25);
+  flyers.push({ kind: 'toWater', d: b.d, fx: b.x, fy: b.y, tx: 1400, ty: 380, t: 0, dur: 0.45, s: b.R * 0.28 * b.scale,
     onDone: () => {
-      G.hatchOpen = 1;
-      if (b.d.rotten) {
-        const pen = Math.round(8 * G.cfg.pay);
-        save.money = Math.max(0, save.money - pen); G.earned -= pen; G.streak = 0; G.shake = 0.5; G.lights = -1.5;
-        popup(1100, 230, `Igitt! Faul! −${pen} €`, '#ff6b5b'); sfx.bad(); return;
-      }
-      const perfect = b.progress >= 0.985 && b.eyesLeft === 0;
-      const q = Math.max(0.1, lerp(0.6, 1, clamp((b.progress - 0.8) / 0.19, 0, 1)) - 0.15 * b.eyesLeft);
-      G.streak = q >= 0.95 ? G.streak + 1 : 0;
-      const streakMul = 1 + Math.min(G.streak - 1, 5) * 0.1 * (G.streak > 0);
-      let pay = 5 * SIZE_PAY[b.d.size] * (b.d.gold ? 5 : 1) * U('vertrag') * G.cfg.pay * q * streakMul * (perfect ? 1.25 : 1);
-      pay = Math.max(1, Math.round(pay));
-      save.money += pay; save.total++; G.earned += pay; G.done++; G.lights = 1.5;
-      if (perfect) { G.perfects++; popup(1100, 200, 'PERFEKT!', '#7dff9a', 34); sfx.perfect(); } else sfx.coin();
-      popup(1100, 240, `+${pay} €${G.streak > 1 ? '  Serie ×' + G.streak : ''}`);
+      sfx.splash(); save.money += pay; save.total++; G.earned += pay; G.done++; G.handDone++; G.wasteSum += waste; G.lights = 1.5;
+      G.floaters.push({ x: rand(140, 1140), y: rand(520, 690), seed: b.d.seed, s: 10 + b.d.size * 2, ph: rand(0, 6), splash: 1 });
+      if (perfect) { G.perfects++; popup(1150, 300, 'PERFEKT!', '#7dff9a', 32); sfx.perfect(); } else sfx.coin();
+      popup(1150, 340, `+${pay} ₽`);
+      if (waste > 0.3) popup(1150, 380, `${Math.round(waste * 100)} % verschwendet`, '#ff9b8b', 18);
       checkWin();
     } });
-  sfx.thud();
+  sfx.whoosh();
 }
-function trash() {
-  if (state !== 'play' || !G.board) return;
-  const b = G.board; G.board = null;
-  for (let i = 0; i < 14; i++) particles.push({ x: b.x + rand(-40, 40), y: b.y + rand(-30, 30), vx: rand(-200, 200), vy: rand(-300, -50), r: 0, vr: rand(-8, 8), s: rand(6, 12), life: 1.2, col: b.d.rotten ? '#3c4a1c' : '#b9824a', kind: 'chunk' });
-  if (b.d.rotten) { G.rottenOk++; popup(BTN_TRASH.x + 100, BTN_TRASH.y - 20, 'Gut aussortiert!', '#7dff9a', 22); }
-  else popup(BTN_TRASH.x + 100, BTN_TRASH.y - 20, 'Schade drum…', '#ccc', 20);
-  sfx.trash();
+function hopperAction(i) {
+  const m = G.machines[i]; if (!m) return;
+  const room = U('trichter') - m.hopper;
+  if (!G.bucket.length) { say('Dein Eimer ist leer – hol Kartoffeln vom Berg! (1)', 1.4); sfx.bad(); return; }
+  if (room <= 0) { say('Trichter ist voll!', 1); return; }
+  const n = Math.min(room, G.bucket.length); G.bucket.splice(0, n); m.hopper += n;
+  sfx.clank(); popup(MACH_X(i) + 130, 280, `+${n}`, '#fff', 22);
 }
 function checkWin() {
   if (G.done >= G.cfg.quota && state === 'play') {
-    const frac = G.time / G.maxTime;
-    const stars = frac >= 0.4 ? 3 : frac >= 0.2 ? 2 : 1;
-    const bonus = Math.round((15 + G.level * 12) * stars * 0.5 + G.perfects * 3);
+    const frac = G.time / G.maxTime, stars = frac >= 0.35 ? 3 : frac >= 0.15 ? 2 : 1;
+    const bonus = Math.round((20 + G.level * 15) * stars * 0.5 + G.perfects * 4);
     save.money += bonus; G.earned += bonus;
     save.stars[G.level] = Math.max(save.stars[G.level] || 0, stars);
     save.unlocked = Math.max(save.unlocked, G.level + 1);
-    persist(); sfx.win();
-    setTimeout(() => endScreen(true, stars, bonus), 700);
-    state = 'end';
+    persist(); sfx.win(); state = 'end'; mouse.down = false;
+    setTimeout(() => endScreen(true, stars, bonus), 800);
   }
 }
 function endScreen(won, stars, bonus) {
-  $('endTitle').textContent = won ? `Level ${G.level} geschafft!` : 'Zeit abgelaufen!';
+  const avgWaste = G.handDone ? Math.round(G.wasteSum / G.handDone * 100) : 0;
+  $('endTitle').textContent = won ? `Tag ${G.level} geschafft – die Armee ist satt!` : 'Feierabend – Auftrag nicht geschafft';
   $('endStars').textContent = won ? '★'.repeat(stars) + '☆'.repeat(3 - stars) : '';
   $('endText').innerHTML = won
-    ? `<p>${G.done} Kartoffeln geschält · ${G.perfects}× perfekt · ${G.rottenOk} faule aussortiert</p><p>Level-Bonus: <span class="money">${euro(bonus)}</span></p><p>Verdient in diesem Level: <span class="money">${euro(G.earned)}</span></p><p>Kontostand: <span class="money">${euro(save.money)}</span></p>`
-    : `<p>${G.done} / ${G.cfg.quota} geschafft. Das verdiente Geld (<span class="money">${euro(G.earned)}</span>) darfst du behalten.</p><p class="sub">Tipp: Im Shop gibt's bessere Messer, größere Eimer und Maschinen!</p><p>Kontostand: <span class="money">${euro(save.money)}</span></p>`;
+    ? `<p>${G.done} Kartoffeln im Reservoir · ${G.handDone} von Hand · ${G.perfects}× perfekt · Ø ${avgWaste} % verschwendet</p><p>Tagesbonus: <span class="money">${rub(bonus)}</span></p><p>Heute verdient: <span class="money">${rub(G.earned)}</span> · Kontostand: <span class="money">${rub(save.money)}</span></p>`
+    : `<p>${G.done} / ${G.cfg.quota} geschafft. Die verdienten <span class="money">${rub(G.earned)}</span> darfst du behalten.</p><p class="sub">Tipp: Im Laden gibt es den Sparschäler – damit geht's schneller und du verschwendest weniger.</p><p>Kontostand: <span class="money">${rub(save.money)}</span></p>`;
   $('bEndNext').style.display = won ? '' : 'none';
   showOv('ovEnd');
 }
 
-// ---------- Eingabe ----------
+// ================= Eingabe =================
 function toGame(e) { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) / r.width * W, y: (e.clientY - r.top) / r.height * H }; }
+cv.addEventListener('contextmenu', e => e.preventDefault());
 cv.addEventListener('pointerdown', e => {
-  audio(); const p = toGame(e); Object.assign(mouse, p); mouse.down = true; mouse.last = p; mouse.over = true;
-  cv.setPointerCapture(e.pointerId);
+  audio(); const p = toGame(e); Object.assign(mouse, p); mouse.over = true;
   if (state !== 'play') return;
-  if (inRect(p, BTN_DELIVER)) return deliver();
-  if (inRect(p, BTN_TRASH)) return trash();
-  if (inRect(p, RES.hatch) || inRect(p, RES)) { if (G.board) deliver(); return; }
-  if (inRect(p, bucketRect)) return bucketToBoard();
-  if (inRect(p, MOUNT)) return grabFromMountain();
-  if (G.board) { // Auge ausstechen?
-    const b = G.board, l = b.toLocal(p);
-    for (const eye of b.eyes) if (!eye.dug && Math.hypot(eye.x - l.x, eye.y - l.y) < eye.r + 10) {
+  for (const n of NAV) if (inRect(p, n)) return goStation(n.i);
+  if (p.x < 50 && p.y > 300 && p.y < 420 && cam.st > 0) return goStation(cam.st - 1);
+  if (p.x > W - 50 && p.y > 300 && p.y < 420 && cam.st < 3) return goStation(cam.st + 1);
+  if (panning()) return;
+  if (e.button === 2) { if (cam.st === 1 && G.board) G.board.flip(); return; }
+  try { cv.setPointerCapture(e.pointerId); } catch (_) {}
+  if (cam.st === 0) { if (p.y > 80 && !(p.x > 900 && p.y > 500)) grab(p); return; }
+  if (cam.st === 3) { for (let i = 0; i < G.machines.length; i++) if (p.x > MACH_X(i) && p.x < MACH_X(i) + 360 && p.y > 250 && p.y < 650) return hopperAction(i); return; }
+  if (cam.st !== 1) return;
+  if (inRect(p, BTN_THROW)) return throwInWater();
+  if (inRect(p, BTN_FLIP)) { if (G.board) G.board.flip(); return; }
+  if (inRect(p, TRAY)) return trayAction();
+  const b = G.board;
+  if (b && b.flipT === 0) {
+    const l = b.toLocal(p);
+    for (const eye of b.side.eyes) if (!eye.dug && Math.hypot(eye.x - l.x, eye.y - l.y) < eye.r + 9) {
       if (b.peeledAt(eye.x, eye.y)) {
-        eye.dug = true; b.wobble = 0.3; sfx.dig();
+        eye.dug = true; b.wobble = 0.3; sfx.dig(); b.side.waste += 1.5;
         for (let i = 0; i < 6; i++) particles.push({ x: p.x, y: p.y, vx: rand(-120, 120), vy: rand(-220, -60), r: 0, vr: rand(-6, 6), s: rand(3, 6), life: 0.9, col: '#3b230d', kind: 'chunk' });
-        mouse.down = false;
-      } else say('Erst die Schale um das Auge entfernen!', 1);
+      } else say('Erst die Schale um das Auge wegschälen!', 1);
       return;
     }
+    mouse.down = true; mouse.last = p; b.stroke++;
   }
 });
 cv.addEventListener('pointermove', e => { const p = toGame(e); mouse.x = p.x; mouse.y = p.y; mouse.over = true; });
 cv.addEventListener('pointerup', () => { mouse.down = false; mouse.last = null; });
 cv.addEventListener('pointerleave', () => { mouse.over = false; });
+cv.addEventListener('wheel', e => { if (state === 'play' && cam.st === 1 && G.board) { e.preventDefault(); G.board.flip(); } }, { passive: false });
 window.addEventListener('keydown', e => {
   if (e.key === 'Escape') { if (state === 'play') pause(); else if (state === 'pause') resume(); return; }
-  if (state !== 'play' || e.repeat && e.key !== 'q') return;
+  if (state !== 'play') return;
   const k = e.key.toLowerCase();
-  if (k === 'q') grabFromMountain();
-  else if (k === 'w') bucketToBoard();
-  else if (k === ' ' || k === 'enter') { e.preventDefault(); deliver(); }
-  else if (k === 'x') trash();
+  if (k >= '1' && k <= '4') goStation(+k - 1);
+  else if (k === 'a' || k === 'arrowleft') goStation(cam.st - 1);
+  else if (k === 'd' || k === 'arrowright') goStation(cam.st + 1);
+  else if (k === 'q') { if (cam.st === 0) grab({ x: rand(400, 880), y: rand(250, 600) }); else if (cam.st === 1) trayAction(); else if (cam.st === 3) { const i = G.machines.findIndex(m => m.hopper < U('trichter')); if (i >= 0) hopperAction(i); } }
+  else if (k === 'r' && cam.st === 1 && G.board) G.board.flip();
+  else if (k === ' ' || k === 'enter') { e.preventDefault(); throwInWater(); }
 });
 
-// ---------- Update ----------
+// ================= Update =================
 function update(dt) {
   for (let i = particles.length - 1; i >= 0; i--) { const p = particles[i]; p.vy += 900 * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.r += p.vr * dt; p.life -= dt; if (p.life <= 0 || p.y > H + 40) particles.splice(i, 1); }
-  for (let i = popups.length - 1; i >= 0; i--) { popups[i].t += dt; if (popups[i].t > 1.4) popups.splice(i, 1); }
-  if (state !== 'play' && state !== 'end') return;
+  for (let i = popups.length - 1; i >= 0; i--) { popups[i].t += dt; if (popups[i].t > 1.5) popups.splice(i, 1); }
+  cam.x += (cam.target - cam.x) * Math.min(1, dt * 9); if (!panning()) cam.x = cam.target;
+  if (!G || (state !== 'play' && state !== 'end')) return;
   for (let i = flyers.length - 1; i >= 0; i--) {
     const f = flyers[i]; f.t += dt;
     if (f.t >= f.dur) {
       flyers.splice(i, 1);
-      if (f.kind === 'toBucket') { if (G.bucket.length < U('eimer')) G.bucket.push(f.d); sfx.thud(); }
-      else if (f.kind === 'toBoard') { G.board = new BoardPotato(f.d); if (f.d.rotten) say('Hmm… die sieht faul aus!', 1.2, '#c9e07a'); else if (f.d.gold) say('Eine GOLDENE Kartoffel! ×5 Lohn', 1.6, '#ffc83d'); }
-      else if (f.kind === 'toRes' && f.onDone) f.onDone();
+      if (f.kind === 'toBucket') { if (G.bucket.length < U('eimer')) G.bucket.push(f.d); if (Math.random() < 0.5) sfx.clank(); }
+      else if (f.kind === 'toBoard') { G.board = new BoardPotato(f.d); if (!save.total && !G.done) say('Maus gedrückt halten und über die Kartoffel ziehen!', 3, '#ffc83d'); }
+      else if (f.onDone) f.onDone();
     }
   }
+  for (const fl of G.floaters) { fl.ph += dt; fl.splash = Math.max(0, fl.splash - dt * 1.5); }
   if (state !== 'play') return;
   G.time -= dt;
-  if (G.time <= 0) { G.time = 0; state = 'end'; persist(); sfx.lose(); setTimeout(() => endScreen(false), 500); return; }
+  if (G.time <= 0) { G.time = 0; state = 'end'; mouse.down = false; persist(); sfx.lose(); setTimeout(() => endScreen(false), 500); return; }
   if (G.msg) { G.msg.t -= dt; if (G.msg.t <= 0) G.msg = null; }
-  G.shake = Math.max(0, G.shake - dt); G.hatchOpen = Math.max(0, G.hatchOpen - dt * 2);
-  G.lights = G.lights > 0 ? Math.max(0, G.lights - dt) : Math.min(0, G.lights + dt);
+  G.lights = Math.max(0, G.lights - dt);
   // Schälen
   const b = G.board;
   if (b) {
-    b.spawn += dt; b.wobble = Math.max(0, b.wobble - dt);
-    if (mouse.down && mouse.last && b.spawn > 0.25) {
+    b.update(dt);
+    if (mouse.down && mouse.last && b.spawn > 0.25 && cam.st === 1) {
       const p = { x: mouse.x, y: mouse.y };
       if (Math.hypot(p.x - mouse.last.x, p.y - mouse.last.y) > 0.5) {
-        const before = b.progress;
-        const n = b.cut(mouse.last, p, U('messer'));
+        const before = b.progress, t = tool();
+        const [n, over] = b.cut(mouse.last, p, t);
         if (n > 0) {
           sfx.scrape();
           const ang = Math.atan2(p.y - mouse.last.y, p.x - mouse.last.x);
-          const cnt = Math.min(3, 1 + (n / 6 | 0));
-          const [base] = peelColors(b.d);
-          for (let i = 0; i < cnt && particles.length < 350; i++) particles.push({ x: p.x + rand(-6, 6), y: p.y + rand(-6, 6), vx: Math.cos(ang) * rand(60, 180) + rand(-60, 60), vy: rand(-260, -80), r: rand(0, 6), vr: rand(-10, 10), s: rand(8, 10 + U('messer') * 0.4), life: 1.6, col: b.d.rotten && Math.random() < 0.4 ? '#2f3a1c' : base, kind: 'peel' });
-          if (before < 0.8 && b.progress >= 0.8) { sfx.machine(); say(b.eyesLeft ? 'Abliefern möglich – Augen noch ausstechen!' : 'Abliefern möglich! (Leertaste)', 1.4, '#7dff9a'); }
+          for (let i = 0; i < Math.min(3, 1 + (n / 5 | 0)) && particles.length < 350; i++)
+            particles.push({ x: p.x + rand(-5, 5), y: p.y + rand(-5, 5), vx: Math.cos(ang) * rand(60, 180) + rand(-50, 50), vy: rand(-240, -60), r: rand(0, 6), vr: rand(-10, 10), s: rand(7, 9 + t.r * 0.4), life: 1.6, col: PEEL[0], kind: t.kind === 'knife' ? 'chunkpeel' : 'peel' });
+          if (before < 0.8 && b.progress >= 0.8) say(b.eyesLeft ? 'Fast fertig – Augen anklicken, dann ins Wasser!' : 'Sauber! Ab ins Wasser (Leertaste)', 1.6, '#7dff9a');
+          if (b.sideProgress(b.cur) > 0.93 && b.sideProgress(1 - b.cur) < 0.3 && !b.hinted) { b.hinted = true; say('Diese Seite ist fertig – umdrehen! (R / Rechtsklick)', 1.8, '#ffc83d'); }
+        } else if (over > 0) {
+          sfx.overcut();
+          if (Math.random() < 0.25) particles.push({ x: p.x, y: p.y, vx: rand(-60, 60), vy: rand(-150, -40), r: 0, vr: rand(-6, 6), s: rand(4, 7), life: 1, col: '#f0dc95', kind: 'chunk' });
         }
       }
       mouse.last = p;
-    } else if (mouse.down) mouse.last = { x: mouse.x, y: mouse.y };
+    }
   }
-  // Förderband
+  // Förderband → Trommeln
   const bi = U('band');
-  if (bi) {
-    G.beltAnim += dt;
-    const pending = flyers.filter(f => f.kind === 'toBucket').length;
-    if (G.bucket.length + pending < U('eimer')) {
-      G.beltT += dt;
-      if (G.beltT >= bi) { G.beltT = 0; flyers.push({ kind: 'toBucket', d: newPotatoData(G.cfg), fx: 30, fy: 520, tx: BUCKET.x + rand(-40, 40), ty: BUCKET.y - 40, t: 0, dur: 0.5, s: 15 }); }
+  if (bi && G.machines.length) {
+    G.beltAnim += dt; G.beltT += dt;
+    if (G.beltT >= bi) { G.beltT = 0; const m = G.machines.reduce((a, c) => c.hopper < a.hopper ? c : a); if (m.hopper < U('trichter')) m.hopper++; }
+  }
+  // Schältrommeln: alles im Trichter gleichzeitig
+  for (let i = 0; i < G.machines.length; i++) {
+    const m = G.machines[i];
+    if (!m.batch && m.hopper) { m.batch = m.hopper; m.hopper = 0; m.t = 0; sfx.machine(); }
+    if (!m.batch) continue;
+    m.t += dt; m.spin += dt;
+    if (m.t >= U('motor')) {
+      let pay = 0; for (let k = 0; k < m.batch; k++) pay += payFor({ size: Math.random() < G.cfg.big ? 2 : 1 }, U('fein'), 0.95, 0);
+      save.money += pay; G.earned += pay; G.done += m.batch; save.total += m.batch; G.lights = 1.5;
+      for (let k = 0; k < Math.min(m.batch, 6); k++) G.floaters.push({ x: rand(140, 1140), y: rand(520, 690), seed: (Math.random() * 1e9) | 0, s: 11, ph: rand(0, 6), splash: 1 });
+      popup(cam.st === 3 ? MACH_X(i) + 180 : 640, cam.st === 3 ? 230 : 130, `Trommel ${i + 1}: ${m.batch} geschält +${pay} ₽`, '#ffc83d', 20);
+      sfx.coin(); m.batch = 0; checkWin();
     }
   }
-  // Schälmaschinen
-  const pt = U('tempo');
-  for (const m of G.machines) {
-    m.anim += dt;
-    if (!m.p) { if (G.bucket.length) { m.p = G.bucket.shift(); m.t = 0; } continue; }
-    m.t += dt;
-    if (m.t >= pt) {
-      const mi = G.machines.indexOf(m), mx = MACH.x + 60 + mi * 105;
-      if (m.p.rotten) { popup(mx, MACH.y + 60, 'faul → Müll', '#c9e07a', 16); }
-      else {
-        const pay = Math.max(1, Math.round(5 * SIZE_PAY[m.p.size] * (m.p.gold ? 5 : 1) * U('vertrag') * G.cfg.pay * 0.7));
-        save.money += pay; G.earned += pay; G.done++; save.total++;
-        popup(mx, MACH.y + 60, `+${pay} €`, '#ffc83d', 20); sfx.machine(); G.lights = 1;
-        checkWin();
-      }
-      m.p = null;
-    }
-  }
+  if (G.floaters.length > 60) G.floaters.splice(0, G.floaters.length - 60);
 }
 
-// ---------- Zeichnen ----------
-function button(r, enabled, hot, col = '#ffc83d', txtCol = '#1b1712') {
+// ================= Zeichnen =================
+function button(r, enabled, col = '#ffc83d', txt = '#1b1712') {
+  const hot = enabled && inRect(mouse, r);
   ctx.save(); ctx.globalAlpha = enabled ? 1 : 0.4;
-  ctx.fillStyle = '#0006'; ctx.beginPath(); ctx.roundRect(r.x, r.y + 4, r.w, r.h, 10); ctx.fill();
-  ctx.fillStyle = hot && enabled ? '#fff1b8' : col; ctx.beginPath(); ctx.roundRect(r.x, r.y, r.w, r.h, 10); ctx.fill();
-  ctx.fillStyle = txtCol; ctx.font = 'bold 19px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#0007'; ctx.beginPath(); ctx.roundRect(r.x, r.y + 4, r.w, r.h, 10); ctx.fill();
+  ctx.fillStyle = hot ? '#fff1b8' : col; ctx.beginPath(); ctx.roundRect(r.x, r.y, r.w, r.h, 10); ctx.fill();
+  ctx.fillStyle = txt; ctx.font = 'bold 19px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText(r.label, r.x + r.w / 2, r.y + r.h / 2 + 1); ctx.restore();
 }
-function drawBucket() {
-  const { x, y } = BUCKET;
-  // Förderband
-  if (U('band')) {
-    ctx.save(); ctx.fillStyle = '#333'; ctx.beginPath(); ctx.moveTo(0, 505); ctx.lineTo(110, 545); ctx.lineTo(110, 565); ctx.lineTo(0, 525); ctx.fill();
-    ctx.strokeStyle = '#777'; ctx.lineWidth = 2; const off = (G ? G.beltAnim * 40 : 0) % 20;
-    for (let i = -1; i < 7; i++) { const t = (i * 20 + off) / 120; ctx.beginPath(); ctx.moveTo(t * 110, 505 + t * 40); ctx.lineTo(t * 110, 525 + t * 40); ctx.stroke(); }
-    ctx.fillStyle = '#c33'; ctx.fillRect(0, 498, 30, 8); ctx.restore();
+function drawBerg() {
+  ctx.drawImage(BG[0], 0, 0);
+  if (U('band') && G && G.machines.length) { // Förderband zur Halle
+    ctx.fillStyle = '#2b2b2b'; ctx.beginPath(); ctx.moveTo(0, 600); ctx.lineTo(300, 520); ctx.lineTo(300, 545); ctx.lineTo(0, 630); ctx.fill();
+    ctx.fillStyle = '#555'; const off = (G.beltAnim * 60) % 40; for (let x = off; x < 300; x += 40) ctx.fillRect(x, 600 - x * 0.27, 4, 22);
   }
-  ctx.save(); ctx.translate(x, y);
-  ctx.fillStyle = '#0004'; ctx.beginPath(); ctx.ellipse(6, 72, 85, 16, 0, 0, 7); ctx.fill();
-  const g = ctx.createLinearGradient(-80, 0, 80, 0); g.addColorStop(0, '#3b3f42'); g.addColorStop(0.4, '#8b9296'); g.addColorStop(1, '#2e3134');
-  ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(-82, -40); ctx.lineTo(82, -40); ctx.lineTo(62, 70); ctx.lineTo(-62, 70); ctx.closePath(); ctx.fill();
-  // Inhalt
-  ctx.fillStyle = '#1b1c1d'; ctx.beginPath(); ctx.ellipse(0, -40, 82, 18, 0, 0, 7); ctx.fill();
-  const cap = U('eimer');
-  ctx.save(); ctx.beginPath(); ctx.ellipse(0, -40, 80, 17, 0, 0, 7); ctx.rect(-90, -120, 180, 80); ctx.clip();
-  const bk = G ? G.bucket : [];
-  bk.forEach((d, i) => { const row = Math.floor(i / 5), col = i % 5; drawMini(ctx, -56 + col * 28 + (row % 2) * 12, -40 - row * 12, 15, d); });
-  ctx.restore();
-  ctx.strokeStyle = '#b4bbbf'; ctx.lineWidth = 4; ctx.beginPath(); ctx.ellipse(0, -40, 82, 18, 0, 0, 7); ctx.stroke();
-  ctx.strokeStyle = '#555'; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(0, -40, 92, 70, 0, Math.PI * 1.05, Math.PI * 1.95); ctx.stroke();
-  ctx.fillStyle = '#fff'; ctx.font = 'bold 18px system-ui'; ctx.textAlign = 'center'; ctx.fillText(`${bk.length}/${cap}`, 0, 25);
+}
+function drawKueche() {
+  ctx.drawImage(BG[1], 0, 0);
+  const tr = G ? G.tray : [];
+  for (let i = 0; i < Math.min(tr.length, 14); i++) drawMini(ctx, TRAY.x + 70 + (i % 5) * 42 + ((i / 5 | 0) % 2) * 18, TRAY.y + 140 - (i / 5 | 0) * 26, 17, tr[i].seed);
+  ctx.fillStyle = '#e8e2d2'; ctx.font = 'bold 22px system-ui'; ctx.textAlign = 'center';
+  ctx.fillText(`${tr.length} roh`, TRAY.x + TRAY.w / 2, TRAY.y - 18);
+  if (state === 'play' && cam.st === 1 && inRect(mouse, TRAY)) { ctx.strokeStyle = '#ffc83d'; ctx.lineWidth = 3; ctx.strokeRect(TRAY.x - 4, TRAY.y - 4, TRAY.w + 8, TRAY.h + 8); }
+  if (!G) return;
+  if (G.board) G.board.draw(ctx);
+  else { ctx.fillStyle = '#c9a57a88'; ctx.font = 'bold 22px system-ui'; ctx.fillText(G.tray.length || G.bucket.length ? '← Klick auf die Ablage (Q)' : 'Hol Kartoffeln vom Berg (1)', BOARD.cx, BOARD.cy); }
+  ctx.fillStyle = '#000a'; ctx.beginPath(); ctx.roundRect(1030, 300, 240, 160, 10); ctx.fill();
+  ctx.textAlign = 'left'; ctx.font = 'bold 15px system-ui';
+  const b = G.board;
+  const row = (y, label, v, col) => { ctx.fillStyle = '#cbbfa8'; ctx.fillText(label, 1045, y); ctx.fillStyle = '#333'; ctx.fillRect(1045, y + 6, 210, 9); ctx.fillStyle = col; ctx.fillRect(1045, y + 6, 210 * clamp(v, 0, 1), 9); };
+  if (b) {
+    row(325, `Vorderseite ${Math.floor(b.sideProgress(0) * 100)} %${b.cur === 0 ? '  ◀' : ''}`, b.sideProgress(0), b.sideProgress(0) > 0.9 ? '#6fd18a' : '#e9b450');
+    row(362, `Rückseite ${Math.floor(b.sideProgress(1) * 100)} %${b.cur === 1 ? '  ◀' : ''}`, b.sideProgress(1), b.sideProgress(1) > 0.9 ? '#6fd18a' : '#e9b450');
+    row(399, `Verschwendet ${Math.round(b.wasteFrac * 100)} %`, b.wasteFrac / 0.6, b.wasteFrac > 0.3 ? '#ff6b5b' : '#c99a5a');
+    ctx.fillStyle = '#cbbfa8'; ctx.fillText(`${SIZE_NAME[b.d.size]} · Augen: ${b.eyesLeft} · ≈ ${payFor(b.d, b.wasteFrac, b.progress, b.eyesLeft)} ₽`, 1045, 445);
+  } else { ctx.fillStyle = '#cbbfa8'; ctx.fillText(`Werkzeug: ${tool().name}`, 1045, 330); ctx.fillText('Keine Kartoffel auf dem Brett', 1045, 360); }
+  button(BTN_FLIP, !!b, '#8a8f93', '#111');
+  BTN_THROW.label = b && b.progress >= 0.98 && !b.eyesLeft ? 'Ins Wasser ★' : 'Ins Wasser ➜ (Leer)';
+  button(BTN_THROW, !!b && canThrow(), '#6fb7d8');
+}
+function drawReservoir(now) {
+  ctx.drawImage(BG[2], 0, 0);
+  const on = G && G.lights > 0;
+  for (const x of [430, 850]) {
+    ctx.fillStyle = on ? '#3e3' : '#2a332c'; ctx.beginPath(); ctx.arc(x, 300, 14, 0, 7); ctx.fill();
+    if (on) { ctx.save(); ctx.shadowColor = '#3e3'; ctx.shadowBlur = 40; ctx.globalAlpha = 0.6; ctx.fill(); ctx.restore(); }
+  }
+  ctx.fillStyle = '#d33'; ctx.beginPath(); ctx.arc(430, 410, 7, 0, 7); ctx.fill();
+  ctx.fillStyle = '#20251f'; ctx.fillRect(900, 180, 300, 150); ctx.strokeStyle = '#5a4630'; ctx.lineWidth = 6; ctx.strokeRect(900, 180, 300, 150);
+  ctx.fillStyle = '#e8e6dc'; ctx.textAlign = 'center'; ctx.font = 'bold 20px system-ui'; ctx.fillText('AUFTRAG DER ARMEE', 1050, 214);
+  ctx.font = 'bold 42px system-ui'; ctx.fillText(G ? `${G.done} / ${G.cfg.quota}` : '', 1050, 268);
+  ctx.font = '16px system-ui'; ctx.fillText('geschälte Kartoffeln', 1050, 300);
+  ctx.save(); ctx.beginPath(); ctx.moveTo(70, 480); ctx.lineTo(1210, 480); ctx.lineTo(1262, 712); ctx.lineTo(18, 712); ctx.closePath(); ctx.clip();
+  const g = ctx.createLinearGradient(0, 480, 0, 720); g.addColorStop(0, '#30525a'); g.addColorStop(1, '#13262b'); ctx.fillStyle = g; ctx.fillRect(0, 480, W, 240);
+  ctx.strokeStyle = '#ffffff18'; ctx.lineWidth = 2;
+  for (let i = 0; i < 14; i++) { const y = 500 + i * 16, o = Math.sin(now * 0.8 + i) * 30; ctx.beginPath(); ctx.moveTo(60 + o, y); for (let x = 60; x < 1240; x += 40) ctx.lineTo(x + o, y + Math.sin(x * 0.03 + now * 2 + i) * 3); ctx.stroke(); }
+  if (G) for (const f of G.floaters) {
+    const bob = Math.sin(f.ph * 2) * 3;
+    if (f.splash > 0) { ctx.strokeStyle = `rgba(255,255,255,${f.splash * 0.6})`; ctx.beginPath(); ctx.ellipse(f.x, f.y + 4, 20 + (1 - f.splash) * 50, 6 + (1 - f.splash) * 14, 0, 0, 7); ctx.stroke(); }
+    drawMini(ctx, f.x, f.y + bob, f.s, f.seed, true);
+    ctx.fillStyle = '#30525a66'; ctx.fillRect(f.x - 30, f.y + bob + 3, 60, 14);
+  }
   ctx.restore();
 }
-function drawReservoir() {
-  // Lampen
-  const on = G && G.lights;
-  [[RES.x + 40, '#e33'], [RES.x + 290, '#3e3']].forEach(([lx, col], i) => {
-    const lit = on && ((i === 1 && on > 0) || (i === 0 && on < 0));
-    ctx.fillStyle = lit ? col : '#333'; ctx.beginPath(); ctx.arc(lx, RES.y + 59, 13, 0, 7); ctx.fill();
-    if (lit) { ctx.save(); ctx.globalAlpha = 0.5; ctx.shadowColor = col; ctx.shadowBlur = 30; ctx.fill(); ctx.restore(); }
-  });
-  // Füllstand
-  const q = G ? G.cfg.quota : 1, d = G ? Math.min(G.done, q) : 0;
-  const bx = RES.x + 40, by = RES.y + 112, bw = RES.w - 80, bh = 26;
-  ctx.fillStyle = '#111'; ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, 6); ctx.fill();
-  ctx.fillStyle = '#6fd18a'; ctx.beginPath(); ctx.roundRect(bx + 3, by + 3, (bw - 6) * d / q, bh - 6, 4); ctx.fill();
-  ctx.fillStyle = '#fff'; ctx.font = 'bold 16px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(`${G ? G.done : 0} / ${q} Kartoffeln`, bx + bw / 2, by + bh / 2 + 1);
-  ctx.textBaseline = 'alphabetic';
-  ctx.fillStyle = '#cfe1d6'; ctx.font = '14px system-ui'; ctx.fillText('Hierher abliefern ↓', RES.x + RES.w / 2, RES.y + 180);
-  // Luke offen
-  const hz = RES.hatch, o = G ? G.hatchOpen : 0;
-  if (o > 0) { ctx.fillStyle = `rgba(255,220,120,${o * 0.35})`; ctx.beginPath(); ctx.roundRect(hz.x, hz.y, hz.w, hz.h, 8); ctx.fill(); }
-  if (state === 'play' && G.board && canDeliver() && inRect(mouse, RES)) { ctx.strokeStyle = '#7dff9a'; ctx.lineWidth = 4; ctx.beginPath(); ctx.roundRect(hz.x - 4, hz.y - 4, hz.w + 8, hz.h + 8, 10); ctx.stroke(); }
-}
-function drawMachines() {
+function drawHalle() {
+  ctx.drawImage(BG[3], 0, 0);
   const n = G ? G.machines.length : 0;
-  ctx.fillStyle = '#cfd8d3'; ctx.font = 'bold 16px system-ui'; ctx.textAlign = 'left';
-  ctx.fillText('SCHÄLMASCHINEN', MACH.x + 16, MACH.y + 26);
-  if (!n) { ctx.fillStyle = '#ffffff55'; ctx.font = '15px system-ui'; ctx.textAlign = 'center'; ctx.fillText('Noch keine Maschinen.', MACH.x + MACH.w / 2, MACH.y + 140); ctx.fillText('Kauf welche im Shop!', MACH.x + MACH.w / 2, MACH.y + 162); }
-  const pt = U('tempo');
-  for (let i = 0; i < 3; i++) {
-    const x = MACH.x + 15 + i * 105, y = MACH.y + 45;
-    if (i >= n) { ctx.strokeStyle = '#ffffff12'; ctx.setLineDash([6, 6]); ctx.strokeRect(x, y, 95, 245); ctx.setLineDash([]); continue; }
-    const m = G.machines[i];
-    let g = ctx.createLinearGradient(x, 0, x + 95, 0); g.addColorStop(0, '#6e1d1d'); g.addColorStop(0.5, '#b03030'); g.addColorStop(1, '#5a1616');
-    ctx.fillStyle = g; ctx.beginPath(); ctx.roundRect(x, y + 40, 95, 165, 8); ctx.fill();
-    ctx.fillStyle = '#7a2222'; ctx.beginPath(); ctx.moveTo(x - 5, y + 40); ctx.lineTo(x + 100, y + 40); ctx.lineTo(x + 80, y); ctx.lineTo(x + 15, y); ctx.fill();
-    // Trommel
-    ctx.save(); ctx.translate(x + 47, y + 110); ctx.rotate(m.p ? m.anim * 8 : 0);
-    ctx.fillStyle = '#2a2a2a'; ctx.beginPath(); ctx.arc(0, 0, 32, 0, 7); ctx.fill();
-    ctx.strokeStyle = '#888'; ctx.lineWidth = 3; for (let k = 0; k < 6; k++) { ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(k) * 30, Math.sin(k) * 30); ctx.stroke(); }
-    if (m.p) drawMini(ctx, 0, 0, 13, Object.assign({}, m.p, { peeled: m.t / pt > 0.6 }));
-    ctx.restore();
-    ctx.fillStyle = '#111'; ctx.fillRect(x + 10, y + 170, 75, 12);
-    ctx.fillStyle = m.p ? '#6fd18a' : '#444'; ctx.fillRect(x + 12, y + 172, m.p ? 71 * (m.t / pt) : 0, 8);
-    ctx.fillStyle = '#ddd'; ctx.font = 'bold 12px system-ui'; ctx.textAlign = 'center'; ctx.fillText(m.p ? 'schält…' : 'wartet', x + 47, y + 230);
-    ctx.fillStyle = '#333'; ctx.fillRect(x + 8, y + 205, 12, 18); ctx.fillRect(x + 75, y + 205, 12, 18);
-    if (m.p && Math.random() < 0.3) particles.push({ x: x + 47 + rand(-20, 20), y: y + 140, vx: rand(-50, 50), vy: rand(-80, 0), r: 0, vr: rand(-6, 6), s: rand(4, 7), life: 0.5, col: '#b9824a', kind: 'peel' });
+  if (!n) {
+    ctx.fillStyle = '#e8d8c8bb'; ctx.textAlign = 'center'; ctx.font = 'bold 28px system-ui'; ctx.fillText('Hier ist noch Platz für Schältrommeln.', 640, 360);
+    ctx.font = '18px system-ui'; ctx.fillText('Kauf im Laden eine Maschine – sie schält viele Kartoffeln gleichzeitig.', 640, 395); return;
   }
+  for (let i = 0; i < 3; i++) {
+    const x = MACH_X(i);
+    if (i >= n) { ctx.strokeStyle = '#ffffff14'; ctx.setLineDash([8, 8]); ctx.strokeRect(x + 20, 280, 320, 360); ctx.setLineDash([]); continue; }
+    const m = G.machines[i], cap = U('trichter');
+    ctx.strokeStyle = '#3d3a35'; ctx.lineWidth = 10; ctx.beginPath(); ctx.moveTo(x + 40, 640); ctx.lineTo(x + 70, 470); ctx.moveTo(x + 220, 640); ctx.lineTo(x + 190, 470); ctx.moveTo(x + 60, 560); ctx.lineTo(x + 200, 560); ctx.stroke();
+    let g = ctx.createLinearGradient(x, 0, x + 260, 0); g.addColorStop(0, '#4d4a42'); g.addColorStop(0.5, '#7b776b'); g.addColorStop(1, '#3f3c35');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(x, 300); ctx.lineTo(x + 260, 300); ctx.lineTo(x + 215, 480); ctx.lineTo(x + 45, 480); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#1a1916'; ctx.beginPath(); ctx.moveTo(x + 12, 306); ctx.lineTo(x + 248, 306); ctx.lineTo(x + 232, 330); ctx.lineTo(x + 28, 330); ctx.closePath(); ctx.fill();
+    for (let k = 0; k < Math.min(m.hopper, 12); k++) drawMini(ctx, x + 50 + (k % 6) * 32, 322 - (k / 6 | 0) * 12, 13, i * 100 + k);
+    ctx.fillStyle = '#a19c8c'; for (let k = 0; k < 7; k++) { ctx.beginPath(); ctx.arc(x + 20 + k * 37, 345, 3, 0, 7); ctx.fill(); }
+    ctx.fillStyle = '#d8d2c0'; ctx.fillRect(x + 90, 380, 80, 40); ctx.fillStyle = '#333'; ctx.font = 'bold 12px system-ui'; ctx.textAlign = 'center'; ctx.fillText('ТРОММЕЛЬ', x + 130, 398); ctx.fillText(`№${i + 1}`, x + 130, 413);
+    ctx.save(); ctx.translate(x + 300, 420);
+    g = ctx.createLinearGradient(-60, 0, 60, 0); g.addColorStop(0, '#55524a'); g.addColorStop(0.5, '#9b968a'); g.addColorStop(1, '#4a4740');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(0, 0, 60, 105, 0, 0, 7); ctx.fill();
+    ctx.strokeStyle = '#2d2b27'; ctx.lineWidth = 3; const rot = m.spin * 6;
+    for (let k = 0; k < 8; k++) { const a = rot + k * Math.PI / 4; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a) * 55, Math.sin(a) * 98); ctx.stroke(); }
+    ctx.fillStyle = '#2d2b27'; ctx.beginPath(); ctx.arc(0, 0, 14, 0, 7); ctx.fill();
+    ctx.restore();
+    ctx.fillStyle = '#000a'; ctx.fillRect(x + 20, 590, 300, 48);
+    ctx.fillStyle = '#e8e2d2'; ctx.font = 'bold 15px system-ui'; ctx.textAlign = 'left';
+    ctx.fillText(m.batch ? `schält ${m.batch} Kartoffeln…` : 'wartet auf Kartoffeln', x + 30, 610);
+    ctx.textAlign = 'right'; ctx.fillText(`Trichter ${m.hopper}/${cap}`, x + 310, 610);
+    ctx.fillStyle = '#333'; ctx.fillRect(x + 30, 620, 280, 9); ctx.fillStyle = '#6fd18a'; ctx.fillRect(x + 30, 620, m.batch ? 280 * m.t / U('motor') : 0, 9);
+    if (m.batch && Math.random() < 0.4 && particles.length < 350) particles.push({ x: x + 300 + rand(-40, 40) + 3 * W - cam.x, y: 520, vx: rand(-60, 60), vy: rand(-60, 20), r: 0, vr: rand(-6, 6), s: rand(4, 7), life: 0.6, col: PEEL[0], kind: 'peel' });
+    if (state === 'play' && cam.st === 3 && mouse.x > x && mouse.x < x + 360 && mouse.y > 250 && mouse.y < 650) { ctx.strokeStyle = '#ffc83d'; ctx.lineWidth = 3; ctx.strokeRect(x - 6, 290, 372, 355); }
+  }
+}
+function drawBucketInHand(now) {
+  const bob = Math.sin(now * 2) * 4, x = BUCKET_POS.x, y = BUCKET_POS.y + bob;
+  ctx.save();
+  ctx.strokeStyle = '#2a2a2a'; ctx.lineWidth = 6; ctx.beginPath(); ctx.ellipse(x - 40, y - 10, 150, 120, -0.3, Math.PI * 1.1, Math.PI * 1.75); ctx.stroke();
+  const g = ctx.createLinearGradient(x - 170, 0, x + 170, 0); g.addColorStop(0, '#2e3235'); g.addColorStop(0.35, '#6d7479'); g.addColorStop(0.7, '#3b4043'); g.addColorStop(1, '#1f2224');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(x - 175, y); ctx.lineTo(x + 175, y); ctx.lineTo(x + 140, y + 220); ctx.lineTo(x - 140, y + 220); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#141516'; ctx.beginPath(); ctx.ellipse(x, y, 172, 42, 0, 0, 7); ctx.fill();
+  const bk = G ? G.bucket : [];
+  ctx.save(); ctx.beginPath(); ctx.ellipse(x, y, 168, 40, 0, 0, 7); ctx.rect(x - 180, y - 140, 360, 140); ctx.clip();
+  for (let i = 0; i < Math.min(bk.length, 18); i++) { const row = i / 6 | 0, col = i % 6; drawMini(ctx, x - 125 + col * 50 + (row % 2) * 20, y + 8 - row * 16, 22, bk[i].seed); }
+  ctx.restore();
+  ctx.strokeStyle = '#8b9296'; ctx.lineWidth = 6; ctx.beginPath(); ctx.ellipse(x, y, 172, 42, 0, 0, 7); ctx.stroke();
+  ctx.fillStyle = '#fff'; ctx.font = 'bold 20px system-ui'; ctx.textAlign = 'center'; ctx.fillText(`${bk.length}/${U('eimer')}`, x, y + 90);
+  ctx.restore();
+}
+function drawTool(now) {
+  const t = tool(), x = mouse.x, y = mouse.y, ang = 0.55 + (mouse.down ? Math.sin(now * 28) * 0.06 : 0);
+  ctx.strokeStyle = mouse.down ? '#ffffffaa' : '#ffffff55'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, t.r, 0, 7); ctx.stroke();
+  ctx.save(); ctx.translate(x, y); ctx.rotate(ang);
+  if (t.kind === 'knife') {
+    ctx.fillStyle = '#c9ced1'; ctx.beginPath(); ctx.moveTo(-30, -2); ctx.lineTo(70, -9); ctx.lineTo(70, 7); ctx.lineTo(-24, 6); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#ffffff66'; ctx.fillRect(-20, -3, 88, 2);
+    ctx.fillStyle = '#6b4022'; ctx.beginPath(); ctx.roundRect(68, -11, 120, 22, 8); ctx.fill();
+    ctx.fillStyle = '#c8c8c8'; for (const k of [95, 130, 165]) { ctx.beginPath(); ctx.arc(k, 0, 3, 0, 7); ctx.fill(); }
+  } else {
+    const w = t.r * 1.6;
+    ctx.rotate(-0.55);
+    ctx.strokeStyle = '#b8bcbf'; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(-w / 2, 0); ctx.lineTo(w / 2, 0); ctx.stroke();
+    ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(-w / 2, 0); ctx.lineTo(-w / 2 + 4, 28); ctx.lineTo(0, 50); ctx.lineTo(w / 2 - 4, 28); ctx.lineTo(w / 2, 0); ctx.stroke();
+    ctx.rotate(-0.35); ctx.fillStyle = '#7a4a24'; ctx.beginPath(); ctx.roundRect(-13, 46, 26, 130, 12); ctx.fill();
+    ctx.strokeStyle = '#5a3416'; ctx.lineWidth = 2; for (let k = 66; k < 166; k += 14) { ctx.beginPath(); ctx.moveTo(-11, k); ctx.lineTo(11, k + 4); ctx.stroke(); }
+  }
+  ctx.restore();
 }
 function drawHUD() {
-  ctx.fillStyle = '#000a'; ctx.fillRect(0, 0, W, 50);
-  ctx.textBaseline = 'middle'; ctx.textAlign = 'left'; ctx.font = 'bold 22px system-ui';
-  ctx.fillStyle = '#ffc83d'; ctx.fillText(`LEVEL ${G.level}`, 18, 26);
-  // Zeit
-  const t = Math.ceil(G.time), low = G.time < 10;
+  ctx.fillStyle = '#000b'; ctx.fillRect(0, 0, W, 44);
+  ctx.textBaseline = 'middle'; ctx.textAlign = 'left'; ctx.font = 'bold 20px system-ui';
+  ctx.fillStyle = '#ffc83d'; ctx.fillText(`TAG ${G.level}`, 16, 23);
+  const t = Math.ceil(G.time), low = G.time < 15;
   ctx.fillStyle = low && (G.time * 2 % 1 < 0.5) ? '#ff6b5b' : '#fff';
-  ctx.fillText(`⏱ ${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`, 150, 26);
-  const tw = 180; ctx.fillStyle = '#333'; ctx.fillRect(260, 19, tw, 14);
-  ctx.fillStyle = low ? '#ff6b5b' : '#6fb7ff'; ctx.fillRect(260, 19, tw * G.time / G.maxTime, 14);
-  ctx.fillStyle = '#fff'; ctx.fillText(`🥔 ${G.done}/${G.cfg.quota}`, 470, 26);
-  ctx.fillStyle = '#ffc83d'; ctx.fillText(`💰 ${euro(save.money)}`, 600, 26);
-  if (G.streak > 1) { ctx.fillStyle = '#7dff9a'; ctx.fillText(`🔥 Serie ×${G.streak}`, 800, 26); }
+  ctx.fillText(`⏱ ${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`, 110, 23);
+  ctx.fillStyle = '#333'; ctx.fillRect(205, 17, 120, 12); ctx.fillStyle = low ? '#ff6b5b' : '#6fb7ff'; ctx.fillRect(205, 17, 120 * G.time / G.maxTime, 12);
+  ctx.fillStyle = '#fff'; ctx.fillText(`Armee-Auftrag ${G.done}/${G.cfg.quota}`, 345, 23);
+  ctx.fillStyle = '#333'; ctx.fillRect(575, 17, 120, 12); ctx.fillStyle = '#6fd18a'; ctx.fillRect(575, 17, 120 * Math.min(1, G.done / G.cfg.quota), 12);
+  ctx.fillStyle = '#ffc83d'; ctx.fillText(rub(save.money), 715, 23);
+  ctx.fillStyle = '#cbbfa8'; ctx.font = '16px system-ui'; ctx.fillText(`Eimer ${G.bucket.length}/${U('eimer')} · ${G.tray.length} roh`, 870, 23);
   ctx.textBaseline = 'alphabetic';
+  for (const n of NAV) {
+    const act = n.i === cam.st, hot = inRect(mouse, n);
+    ctx.fillStyle = act ? '#ffc83d' : hot ? '#4a3d2e' : '#000b'; ctx.beginPath(); ctx.roundRect(n.x, n.y, n.w, n.h, 8); ctx.fill();
+    ctx.fillStyle = act ? '#1b1712' : '#e8e2d2'; ctx.font = 'bold 15px system-ui'; ctx.textAlign = 'center'; ctx.fillText(n.label, n.x + n.w / 2, n.y + 22);
+  }
+  ctx.fillStyle = '#ffffff66'; ctx.font = 'bold 44px system-ui'; ctx.textAlign = 'center';
+  if (cam.st > 0) ctx.fillText('‹', 24, 375);
+  if (cam.st < 3) ctx.fillText('›', W - 24, 375);
+  ctx.font = 'italic 15px system-ui'; ctx.fillStyle = '#ffffffbb';
+  ctx.fillText(['Klick auf den Berg → Kartoffeln in den Eimer · dann ab in die Küche (2)', 'Ablage anklicken · ziehen zum Schälen · R umdrehen · Leertaste: ins Wasser', 'Hier landen deine geschälten Kartoffeln', 'Klick auf eine Trommel → Eimer in den Trichter kippen'][cam.st], 640, 668);
 }
 function draw() {
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  if (G && G.shake > 0) ctx.translate(rand(-1, 1) * G.shake * 14, rand(-1, 1) * G.shake * 14);
-  ctx.drawImage(bgCanvas, 0, 0);
-  // Schnee
   const now = performance.now() / 1000;
-  ctx.fillStyle = '#ffffffcc';
-  for (let i = 0; i < 40; i++) { const x = (i * 97 + Math.sin(now + i) * 20) % 380, y = (i * 53 + now * (20 + i % 5 * 8)) % 720; ctx.beginPath(); ctx.arc(x, y, 1 + i % 3, 0, 7); ctx.fill(); }
-  if (state === 'play' && inRect(mouse, MOUNT) && mouse.over) { ctx.fillStyle = '#ffffff22'; ctx.beginPath(); ctx.arc(mouse.x, mouse.y, 40, 0, 7); ctx.fill(); }
-  drawBucket(); drawReservoir(); drawMachines();
-  if (G) {
-    if (G.board) G.board.draw(ctx);
-    else if (state === 'play') { ctx.fillStyle = '#5a3a1a88'; ctx.font = 'bold 22px system-ui'; ctx.textAlign = 'center'; ctx.fillText(G.bucket.length ? 'Klick auf den Eimer (W)' : 'Klick auf den Berg (Q)', BOARD.cx, BOARD.cy); }
-    // Fortschritt der aktuellen Kartoffel
-    if (G.board) {
-      const b = G.board, p = b.progress;
-      const x = BOARD.x + 20, y = BOARD.y + 16, w = BOARD.w - 40;
-      ctx.fillStyle = '#0007'; ctx.beginPath(); ctx.roundRect(x, y, w, 22, 6); ctx.fill();
-      ctx.fillStyle = p >= 0.8 ? '#6fd18a' : '#e9b450'; ctx.beginPath(); ctx.roundRect(x + 2, y + 2, (w - 4) * p, 18, 5); ctx.fill();
-      ctx.fillStyle = '#fff'; ctx.fillRect(x + 2 + (w - 4) * 0.8, y, 2, 22);
-      ctx.font = 'bold 14px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      let info = `${Math.floor(p * 100)} % geschält · ${SIZE_NAME[b.d.size]}`;
-      if (b.eyesLeft) info += ` · ${b.eyesLeft} Auge${b.eyesLeft > 1 ? 'n' : ''}`;
-      if (b.d.gold) info += ' · GOLD';
-      ctx.fillText(info, x + w / 2, y + 12); ctx.textBaseline = 'alphabetic';
-    }
-    button(BTN_TRASH, !!G.board && state === 'play', inRect(mouse, BTN_TRASH), '#8a8f93', '#111');
-    BTN_DELIVER.label = G.board && G.board.progress >= 0.8 && G.board.progress >= 0.985 && !G.board.eyesLeft ? 'Abliefern ★' : 'Abliefern ➜ (Leer)';
-    button(BTN_DELIVER, state === 'play' && canDeliver(), inRect(mouse, BTN_DELIVER), '#6fd18a');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const fns = [drawBerg, drawKueche, drawReservoir, drawHalle];
+  for (let i = 0; i < 4; i++) {
+    const off = i * W - cam.x; if (Math.abs(off) >= W) continue;
+    ctx.save(); ctx.translate(off, 0); ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.clip(); fns[i](now); ctx.restore();
   }
-  // Partikel
+  const off0 = -cam.x;
+  if (off0 > -W) { ctx.fillStyle = '#ffffffcc'; for (let i = 0; i < 70; i++) { const x = ((i * 137 + Math.sin(now + i) * 20) % W) + off0, y = (i * 53 + now * (25 + i % 5 * 9)) % H; ctx.beginPath(); ctx.arc(x, y, 1 + i % 3, 0, 7); ctx.fill(); } }
+  const vg = ctx.createRadialGradient(640, 360, 320, 640, 360, 820); vg.addColorStop(0, '#0000'); vg.addColorStop(1, '#0009'); ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
   for (const p of particles) {
     ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.r); ctx.globalAlpha = clamp(p.life, 0, 1); ctx.fillStyle = p.col;
-    if (p.kind === 'peel') { ctx.beginPath(); ctx.moveTo(-p.s, 0); ctx.quadraticCurveTo(0, -p.s * 0.8, p.s, 0); ctx.quadraticCurveTo(0, -p.s * 0.3, -p.s, 0); ctx.fill(); ctx.fillStyle = '#f3e2a8'; ctx.globalAlpha *= 0.6; ctx.fillRect(-p.s * 0.5, -p.s * 0.25, p.s, 1.5); }
-    else { ctx.beginPath(); ctx.arc(0, 0, p.s * 0.5, 0, 7); ctx.fill(); }
+    if (p.kind === 'peel' || p.kind === 'chunkpeel') {
+      ctx.beginPath(); ctx.moveTo(-p.s, 0); ctx.quadraticCurveTo(0, -p.s * 0.9, p.s, 0); ctx.quadraticCurveTo(0, -p.s * 0.3, -p.s, 0); ctx.fill();
+      ctx.fillStyle = '#f3e2a8'; ctx.globalAlpha *= p.kind === 'chunkpeel' ? 0.95 : 0.5; ctx.fillRect(-p.s * 0.6, -p.s * 0.28, p.s * 1.2, p.kind === 'chunkpeel' ? 3.5 : 1.5);
+    } else { ctx.beginPath(); ctx.arc(0, 0, p.s * 0.5, 0, 7); ctx.fill(); }
     ctx.restore();
   }
-  // Flug-Kartoffeln
   for (const f of flyers) {
     if (f.t < 0) continue;
-    const t = clamp(f.t / f.dur, 0, 1), e = t * t * (3 - 2 * t);
-    const x = lerp(f.fx, f.tx, e), y = lerp(f.fy, f.ty, e) - Math.sin(t * Math.PI) * 90;
-    const s = f.kind === 'toRes' ? lerp(f.s, 12, e) : f.kind === 'toBoard' ? lerp(15, 40, e) : f.s;
-    drawMini(ctx, x, y, s, f.d, t * 6);
+    const t = clamp(f.t / f.dur, 0, 1), e = t * t * (3 - 2 * t), stationOff = (f.kind === 'toBucket' ? 0 : W) - cam.x;
+    const x = lerp(f.fx, f.tx, e) + stationOff, y = lerp(f.fy, f.ty, e) - Math.sin(t * Math.PI) * (f.kind === 'toWater' ? 160 : 90);
+    const s = f.kind === 'toBoard' ? lerp(16, 40, e) : f.s;
+    drawMini(ctx, x, y, s, f.d.seed, f.kind === 'toWater');
   }
-  // Popups
+  const st = Math.round(cam.x / W);
+  if (state !== 'menu' && (st === 0 || st === 3)) drawBucketInHand(now);
   ctx.textAlign = 'center';
   for (const p of popups) {
-    const a = 1 - Math.max(0, p.t - 0.9) / 0.5;
-    ctx.globalAlpha = clamp(a, 0, 1); ctx.font = `900 ${p.size}px system-ui`;
+    ctx.globalAlpha = clamp(1 - Math.max(0, p.t - 1) / 0.5, 0, 1); ctx.font = `900 ${p.size}px system-ui`;
     ctx.lineWidth = 5; ctx.strokeStyle = '#000a'; ctx.strokeText(p.text, p.x, p.y - p.t * 50); ctx.fillStyle = p.color; ctx.fillText(p.text, p.x, p.y - p.t * 50);
   }
   ctx.globalAlpha = 1;
-  if (G && (state === 'play' || state === 'end' || state === 'pause')) {
+  if (G && state !== 'menu') {
     drawHUD();
     if (G.msg) {
-      ctx.globalAlpha = clamp(G.msg.t * 3, 0, 1); ctx.font = 'bold 24px system-ui'; ctx.textAlign = 'center';
+      ctx.globalAlpha = clamp(G.msg.t * 3, 0, 1); ctx.font = 'bold 23px system-ui'; ctx.textAlign = 'center';
       const w = ctx.measureText(G.msg.text).width + 40;
-      ctx.fillStyle = '#000b'; ctx.beginPath(); ctx.roundRect(BOARD.cx - w / 2, 66, w, 40, 10); ctx.fill();
-      ctx.fillStyle = G.msg.color; ctx.fillText(G.msg.text, BOARD.cx, 94); ctx.globalAlpha = 1;
+      ctx.fillStyle = '#000c'; ctx.beginPath(); ctx.roundRect(640 - w / 2, 58, w, 40, 10); ctx.fill();
+      ctx.fillStyle = G.msg.color; ctx.fillText(G.msg.text, 640, 86); ctx.globalAlpha = 1;
     }
   }
-  // Cursor
   if (mouse.over) {
-    const onBoard = state === 'play' && G && G.board && inRect(mouse, BOARD);
-    if (onBoard) {
-      const r = U('messer');
-      ctx.strokeStyle = mouse.down ? '#ffffffcc' : '#ffffff77'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(mouse.x, mouse.y, r, 0, 7); ctx.stroke();
-      // Sparschäler
-      ctx.save(); ctx.translate(mouse.x, mouse.y); ctx.rotate(-0.7 + (mouse.down ? Math.sin(now * 30) * 0.1 : 0));
-      ctx.fillStyle = '#d6dadc'; ctx.beginPath(); ctx.roundRect(-4, -r - 6, 8, r + 2, 3); ctx.fill();
-      ctx.fillStyle = '#7a4a22'; ctx.beginPath(); ctx.roundRect(-7, 0, 14, 70, 6); ctx.fill();
-      ctx.fillStyle = '#5a3416'; ctx.fillRect(-7, 20, 14, 4); ctx.restore();
-    } else {
-      ctx.fillStyle = '#fff'; ctx.strokeStyle = '#000'; ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.moveTo(mouse.x, mouse.y); ctx.lineTo(mouse.x + 14, mouse.y + 14); ctx.lineTo(mouse.x + 6, mouse.y + 15); ctx.lineTo(mouse.x + 1, mouse.y + 21); ctx.closePath(); ctx.fill(); ctx.stroke();
-    }
+    if (state === 'play' && cam.st === 1 && !panning() && G.board && mouse.y > 120 && mouse.x > 380 && mouse.x < 1020 && mouse.y < 670) drawTool(now);
+    else { ctx.fillStyle = '#fff'; ctx.strokeStyle = '#000'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(mouse.x, mouse.y); ctx.lineTo(mouse.x + 14, mouse.y + 14); ctx.lineTo(mouse.x + 6, mouse.y + 15); ctx.lineTo(mouse.x + 1, mouse.y + 21); ctx.closePath(); ctx.fill(); ctx.stroke(); }
   }
 }
 
-// ---------- Overlays ----------
+// ================= Menüs =================
 function showOv(id) { document.querySelectorAll('.ov').forEach(o => o.classList.toggle('show', o.id === id)); $('pauseBtn').style.display = state === 'play' ? '' : 'none'; }
-function menu() { state = 'menu'; G = null; $('menuMoney').textContent = euro(save.money); $('bSound').textContent = save.sound ? '🔊 Ton an' : '🔇 Ton aus'; showOv('ovMenu'); }
-function pause() { if (state !== 'play') return; state = 'pause'; showOv('ovPause'); }
+function menu() { state = 'menu'; G = null; cam.x = cam.target = 0; cam.st = 0; $('menuMoney').textContent = rub(save.money); $('bSound').textContent = save.sound ? '🔊 Ton an' : '🔇 Ton aus'; showOv('ovMenu'); }
+function pause() { if (state !== 'play') return; state = 'pause'; mouse.down = false; showOv('ovPause'); }
 function resume() { state = 'play'; showOv(null); }
 let shopReturn = 'menu';
 function openShop(from) { shopReturn = from; renderShop(); showOv('ovShop'); }
 function renderShop() {
-  $('shopMoney').textContent = euro(save.money);
-  const grid = $('shopgrid'); grid.innerHTML = '';
+  $('shopMoney').textContent = rub(save.money);
+  const grid = $('shopgrid'); grid.innerHTML = ''; let group = '';
   for (const k in UPGRADES) {
     const u = UPGRADES[k], lvl = save.up[k], max = u.vals.length - 1, price = u.prices[lvl];
+    if (u.group !== group) { group = u.group; const h = document.createElement('div'); h.className = 'shophead'; h.textContent = group; grid.appendChild(h); }
     const el = document.createElement('div'); el.className = 'card';
     el.innerHTML = `<b>${u.name}</b><span>${u.desc}</span><span class="lvl">Jetzt: ${fmtVal(k, u.vals[lvl])}${lvl < max ? ' → ' + fmtVal(k, u.vals[lvl + 1]) : ''}</span><span class="pips">${'●'.repeat(lvl)}${'○'.repeat(max - lvl)}</span>`;
     const btn = document.createElement('button');
     if (lvl >= max) { btn.textContent = 'Maximal'; btn.disabled = true; }
-    else if (k === 'tempo' && !save.up.maschinen) { btn.textContent = 'Erst Maschine kaufen'; btn.disabled = true; }
-    else { btn.textContent = `Kaufen – ${euro(price)}`; btn.disabled = save.money < price; btn.onclick = () => { save.money -= price; save.up[k]++; persist(); sfx.coin(); renderShop(); }; }
+    else if (u.needs && !save.up[u.needs]) { btn.textContent = 'Erst Schältrommel kaufen'; btn.disabled = true; }
+    else { btn.textContent = `Kaufen – ${rub(price)}`; btn.disabled = save.money < price; btn.onclick = () => { save.money -= price; save.up[k]++; persist(); sfx.coin(); renderShop(); }; }
     el.appendChild(btn); grid.appendChild(el);
   }
 }
@@ -815,7 +871,7 @@ function renderMap() {
   for (let i = 1; i <= n; i++) {
     const b = document.createElement('button'), st = save.stars[i] || 0;
     if (i > save.unlocked) { b.className = 'sec'; b.disabled = true; b.innerHTML = `🔒<span>${i}</span>`; }
-    else { if (!st) b.className = 'sec'; b.innerHTML = `<span>Level ${i}</span><span class="stars">${st ? '★'.repeat(st) + '☆'.repeat(3 - st) : 'neu'}</span>`; b.onclick = () => startLevel(i); }
+    else { if (!st) b.className = 'sec'; b.innerHTML = `<span>Tag ${i}</span><span class="stars">${st ? '★'.repeat(st) + '☆'.repeat(3 - st) : 'neu'}</span>`; b.onclick = () => startLevel(i); }
     box.appendChild(b);
   }
 }
@@ -827,7 +883,7 @@ $('bHelpBack').onclick = () => menu();
 $('bSound').onclick = () => { save.sound = !save.sound; persist(); menu(); };
 let resetArmed = false;
 $('bReset').onclick = () => {
-  if (!resetArmed) { resetArmed = true; $('bReset').textContent = 'Sicher? Nochmal klicken'; setTimeout(() => { resetArmed = false; if (state === 'menu') $('bReset').textContent = 'Spielstand löschen'; }, 3000); return; }
+  if (!resetArmed) { resetArmed = true; $('bReset').textContent = 'Sicher? Nochmal klicken'; setTimeout(() => { resetArmed = false; $('bReset').textContent = 'Spielstand löschen'; }, 3000); return; }
   resetArmed = false; save = freshSave(); persist(); menu(); $('bReset').textContent = 'Spielstand löschen';
 };
 $('bMapBack').onclick = () => menu();
@@ -843,7 +899,7 @@ $('bPauseRestart').onclick = () => { persist(); startLevel(G.level); };
 $('bPauseMenu').onclick = () => { persist(); menu(); };
 document.addEventListener('visibilitychange', () => { if (document.hidden) { persist(); pause(); } });
 
-// ---------- Schleife ----------
+// ================= Schleife =================
 let lastT = performance.now();
 function frame(t) {
   const dt = Math.min(0.05, (t - lastT) / 1000); lastT = t;
@@ -851,7 +907,7 @@ function frame(t) {
   draw();
   requestAnimationFrame(frame);
 }
-resize(); buildBackground(); menu();
+resize(); buildBackgrounds(); menu();
 if (!save.total) showOv('ovHelp');
 requestAnimationFrame(frame);
 </script>
