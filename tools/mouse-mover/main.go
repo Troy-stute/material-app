@@ -316,7 +316,7 @@ func main() {
 	pSendMessageW.Call(hChk, bmSetCheck, 1, 0)
 	hButton = control(hwnd, "BUTTON", "Start", wsTabStop|bsDefPushBtn, 0, 16, 82, 228, 32, idButton, font)
 	hStatus = control(hwnd, "STATIC", "Gestoppt", 0, 0, 16, 126, 228, 40, 0, font)
-	control(hwnd, "STATIC", copyright, ssRight, 0, 16, 174, 236, 20, 0, font)
+	control(hwnd, "STATIC", copyright, ssRight, 0, 16, 174, 228, 20, 0, font)
 
 	pShowWindow.Call(hwnd, swShow)
 	pUpdateWindow.Call(hwnd)
