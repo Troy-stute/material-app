@@ -68,12 +68,18 @@ function load() {
       s.inventory = s.inventory || [];
       // v1.6 hatte nur den Katalog synchronisiert: { remote, pending, syncedAt }
       if (s.sync && 'pending' in s.sync) s.sync = { catalog: s.sync };
-      s.sync = Object.assign({ catalog: defaultDocSync(), inventory: defaultDocSync() }, s.sync);
+      s.sync = Object.assign(defaultSyncAll(), s.sync);
+      s.customers = s.customers || [];
+      s.projects = s.projects || [];
+      s.photoQueue = s.photoQueue || [];
       return s;
     }
   } catch (e) { /* ungültige Daten: neu starten */ }
   return { settings: defaultSettings(), catalog: defaultCatalog(), orders: [], inventory: [],
-    sync: { catalog: defaultDocSync(), inventory: defaultDocSync() } };
+    customers: [], projects: [], photoQueue: [], sync: defaultSyncAll() };
+}
+function defaultSyncAll() {
+  return { catalog: defaultDocSync(), inventory: defaultDocSync(), customers: defaultDocSync(), projects: defaultDocSync() };
 }
 function defaultSettings() {
   return { vehicle: 'Ford Transit', email: 'joel.stutz@avs.ch', ejService: '', ejTemplate: '', ejKey: '', ghToken: '' };
@@ -90,11 +96,47 @@ function save() {
 let currentCat = CATEGORIES[0];
 
 // ---------- Navigation ----------
+// Zwei Bereiche mit eigener Navigation; die Einstellungen teilen sich beide
+const AREAS = {
+  material: { title: 'Material nachfüllen', sub: () => state.settings.vehicle, nav: '#navMaterial', start: 'erfassen' },
+  projekte: { title: 'Projekte', sub: () => 'Kunden, Aufgaben & Notizen', nav: '#navProjekte', start: 'projekte' },
+};
+let area = null;
+
+function goHome() {
+  area = null;
+  const orders = openOrders().length, low = state.inventory.filter((e) => e.qty < e.target).length;
+  const prOpen = state.projects.filter((p) => (p.status || 'offen') === 'offen').length;
+  $('#homeMatSub').textContent = orders || low
+    ? [orders && `${orders} im Auftrag`, low && `${low} unter Soll`].filter(Boolean).join(' · ')
+    : 'Nachfüllen, Auftrag, Inventar';
+  $('#homePrSub').textContent = prOpen ? `${prOpen} offene${prOpen === 1 ? 's' : ''} Projekt${prOpen === 1 ? '' : 'e'}` : 'Kunden, Aufgaben & Notizen';
+  $('#home').classList.remove('hidden');
+  window.scrollTo(0, 0);
+}
+function enterArea(name) {
+  area = name;
+  const a = AREAS[name];
+  $('#home').classList.add('hidden');
+  $('#hdrTitle').textContent = a.title;
+  $('#hdrVehicle').textContent = a.sub();
+  document.querySelectorAll('nav').forEach((n) => { n.hidden = '#' + n.id !== a.nav; });
+  show(a.start);
+}
+document.querySelectorAll('[data-area]').forEach((b) => b.addEventListener('click', () => enterArea(b.dataset.area)));
+$('#btnHome').addEventListener('click', goHome);
+
+// Unterseiten, die in der Navigation zu einem Tab gehören
+const NAV_PARENT = { projekt: 'projekte' };
+
 function show(view) {
   document.querySelectorAll('.view').forEach((v) => v.classList.toggle('active', v.id === 'v-' + view));
-  document.querySelectorAll('nav button').forEach((b) => b.classList.toggle('on', b.dataset.view === view));
+  document.querySelectorAll('nav button').forEach((b) => b.classList.toggle('on', b.dataset.view === (NAV_PARENT[view] || view)));
   if (view === 'auftrag') renderOrders();
   if (view === 'inventar') renderInventory();
+  if (view === 'projekte') renderProjectList();
+  if (view === 'projekt') renderProjectDetail();
+  if (view === 'projekt-neu') renderNewProject();
   if (view === 'settings') renderSettings();
   window.scrollTo(0, 0);
 }
@@ -750,8 +792,9 @@ $('#btnResetCatalog').addEventListener('click', () => {
 // Lesen geht ohne Anmeldung; Schreiben braucht einen GitHub-Token mit Schreibrecht auf "Contents".
 // Geändert wird über Operationen (add/update/delete/delta), die auf den neusten Serverstand
 // angewendet werden. So gehen gleichzeitige Änderungen von Handy und PC nicht verloren.
-const GH_BASE = 'https://api.github.com/repos/Troy-stute/material-app/contents/';
-const GH_BRANCH = 'data';
+// Katalog/Inventar: öffentliches Repo (Zweig data). Kunden/Projekte/Fotos: privates Repo material-daten.
+const GH_PUBLIC = { base: 'https://api.github.com/repos/Troy-stute/material-app/contents/', branch: 'data' };
+const GH_PRIVATE = { base: 'https://api.github.com/repos/Troy-stute/material-daten/contents/', branch: 'main' };
 
 function applyOp(items, op) {
   if (op.type === 'add') {
@@ -763,9 +806,10 @@ function applyOp(items, op) {
   return items;
 }
 
+// private: liegt im privaten Repo, Lesen nur mit Token möglich
 const DOCS = {
-  catalog: { path: 'catalog.json', label: 'Katalog', apply: applyOp, get: () => state.catalog, set: (v) => { state.catalog = v; } },
-  inventory: { path: 'inventory.json', label: 'Inventar', apply: applyInvOp, get: () => state.inventory, set: (v) => { state.inventory = v; } },
+  catalog: { path: 'catalog.json', label: 'Katalog', repo: GH_PUBLIC, apply: applyOp, get: () => state.catalog, set: (v) => { state.catalog = v; } },
+  inventory: { path: 'inventory.json', label: 'Inventar', repo: GH_PUBLIC, apply: applyInvOp, get: () => state.inventory, set: (v) => { state.inventory = v; } },
 };
 
 function rebuildDoc(doc) {
@@ -774,10 +818,11 @@ function rebuildDoc(doc) {
   d.set(s.pending.reduce(d.apply, base.map((i) => ({ ...i }))));
 }
 
-function renderAllLists() {
+function renderAllLists(fromSync) {
   renderItems(); renderCatalogList(); renderSyncStatus();
   if ($('#v-inventar').classList.contains('active')) renderInventory();
   if ($('#v-auftrag').classList.contains('active')) renderOrders();
+  if (typeof renderProjectViews === 'function') renderProjectViews(fromSync);
 }
 
 function docOp(doc, op) {
@@ -806,8 +851,10 @@ function ghHeaders() {
 }
 
 async function fetchRemote(doc) {
-  const res = await fetch(`${GH_BASE}${DOCS[doc].path}?ref=${GH_BRANCH}&t=${Date.now()}`, { headers: ghHeaders(), cache: 'no-store' });
+  const { repo, path } = DOCS[doc];
+  const res = await fetch(`${repo.base}${path}?ref=${repo.branch}&t=${Date.now()}`, { headers: ghHeaders(), cache: 'no-store' });
   if (res.status === 401) throw new Error('Token ungültig oder abgelaufen');
+  if (res.status === 404 && DOCS[doc].private) throw new Error('Token hat keinen Zugriff auf material-daten');
   if (res.status === 404 && doc !== 'catalog') return { sha: null, items: [] }; // Datei wird beim ersten Speichern angelegt
   if (!res.ok) throw new Error('Server antwortet nicht (' + res.status + ')');
   const json = await res.json();
@@ -819,10 +866,10 @@ async function pushRemote(doc, items, sha) {
   const body = {
     message: `${DOCS[doc].label} aktualisiert (${items.length} Einträge)`,
     content: b64encode(JSON.stringify({ updated: Date.now(), items }, null, 2) + '\n'),
-    branch: GH_BRANCH,
+    branch: DOCS[doc].repo.branch,
   };
   if (sha) body.sha = sha;
-  const res = await fetch(GH_BASE + DOCS[doc].path, { method: 'PUT', headers: { ...ghHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const res = await fetch(DOCS[doc].repo.base + DOCS[doc].path, { method: 'PUT', headers: { ...ghHeaders(), 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   if (res.status === 409 || res.status === 422) return false; // zwischenzeitlich geändert: neu versuchen
   if (res.status === 401) throw new Error('Token ungültig oder abgelaufen');
   if (res.status === 403 || res.status === 404) throw new Error('Token hat kein Schreibrecht');
@@ -876,8 +923,8 @@ async function syncCatalog(force, manual) {
 
   const before = new Map(state.inventory.map((e) => [e.id, e.qty + '/' + e.target]));
   try {
-    await syncDoc('catalog');
-    await syncDoc('inventory');
+    for (const doc of activeDocs()) await syncDoc(doc);
+    if (state.settings.ghToken && typeof syncPhotos === 'function') await syncPhotos();
     lastPull = Date.now();
     syncError = '';
   } catch (e) {
@@ -885,28 +932,29 @@ async function syncCatalog(force, manual) {
   }
   clearTimeout(timeout);
   syncBusy = false;
-  rebuildDoc('catalog');
-  rebuildDoc('inventory');
+  Object.keys(DOCS).forEach(rebuildDoc);
   // Auf anderen Geräten geänderte Bestände: fehlende Mengen auch hier auf den Nachfüll-Auftrag setzen
   state.inventory.forEach((e) => { if (before.get(e.id) !== e.qty + '/' + e.target) reconcileOrder(e); });
   save();
-  renderAllLists();
+  renderAllLists(true);
   if (manual) {
     btns.forEach((b) => { b.disabled = false; b.textContent = b.dataset.label; });
     const pend = pendingCount();
     if (syncError) toast('⚠ ' + syncError);
     else if (pend && !state.settings.ghToken) toast('Geladen – eigene Änderungen nur auf diesem Gerät (kein Token)');
-    else toast(state.settings.ghToken ? '✓ Katalog und Inventar synchronisiert' : '✓ Katalog und Inventar geladen (nur lesen)');
+    else toast(state.settings.ghToken ? '✓ Alles synchronisiert' : '✓ Katalog und Inventar geladen (nur lesen)');
   }
 }
 
-const pendingCount = () => state.sync.catalog.pending.length + state.sync.inventory.pending.length;
+// Private Listen (Projekte) lassen sich ohne Token gar nicht lesen
+const activeDocs = () => Object.keys(DOCS).filter((d) => !DOCS[d].private || state.settings.ghToken);
+const pendingCount = () => Object.keys(DOCS).reduce((n, d) => n + state.sync[d].pending.length, 0) + (state.photoQueue || []).length;
 
 function renderSyncStatus() {
   const el = $('#syncStatus');
   if (!el) return;
   const n = pendingCount();
-  const times = [state.sync.catalog.syncedAt, state.sync.inventory.syncedAt];
+  const times = activeDocs().map((d) => state.sync[d].syncedAt);
   const syncedAt = times.every(Boolean) ? Math.min(...times) : null;
   let text;
   if (syncBusy) text = '⟳ Synchronisiere …';
@@ -1000,7 +1048,7 @@ async function pressKey(k) {
       sessionStorage.setItem(UNLOCK_KEY, PIN_HASH);
       if ($('#lockRemember').checked) localStorage.setItem(UNLOCK_KEY, PIN_HASH);
     } catch (err) { /* ohne Speicher: nur bis zum Neuladen entsperrt */ }
-    setTimeout(() => { $('#lock').classList.add('hidden'); pinInput = ''; renderDots(); }, 120);
+    setTimeout(() => { $('#lock').classList.add('hidden'); pinInput = ''; renderDots(); goHome(); }, 120);
   } else {
     $('#lockErr').textContent = 'Falsche PIN';
     const d = $('#lockDots');
@@ -1017,16 +1065,16 @@ document.addEventListener('keydown', (e) => {
 $('#btnLock').addEventListener('click', lock);
 renderDots();
 if (isUnlocked()) $('#lock').classList.add('hidden');
+goHome();
 
-function renderHeader() { $('#hdrVehicle').textContent = state.settings.vehicle; }
+function renderHeader() { if (area) $('#hdrVehicle').textContent = AREAS[area].sub(); }
 
 function init() {
   renderHeader(); renderCats(); renderItems(); renderBadge();
   if ($('#v-auftrag').classList.contains('active')) renderOrders();
   if ($('#v-settings').classList.contains('active')) renderSettings();
 }
-init();
-syncCatalog(true);
+document.addEventListener('DOMContentLoaded', () => { init(); syncCatalog(true); });
 
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
   navigator.serviceWorker.register('sw.js').catch(() => {});

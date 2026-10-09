@@ -89,6 +89,68 @@
   .catfold > summary { display: flex; align-items: center; gap: 10px; padding: 11px 14px; background: var(--bg);
     border-top: 1px solid var(--line); color: var(--muted); font-size: 14px; font-weight: 600; }
   .catfold .rowbtn:first-of-type { border-top: 1px solid var(--line); }
+  /* Kopfzeile / Startbildschirm */
+  .homebtn { border: 0; background: rgba(255,255,255,.15); color: #fff; width: 40px; height: 40px; border-radius: 12px;
+    display: grid; place-items: center; flex: none; }
+  .homebtn svg { width: 20px; height: 20px; }
+  nav[hidden] { display: none; }
+  #home { position: fixed; inset: 0; z-index: 15; background: var(--bg); overflow-y: auto;
+    padding: calc(24px + env(safe-area-inset-top)) 16px 24px; display: flex; align-items: center; justify-content: center; }
+  #home.hidden { display: none; }
+  .homeinner { width: 100%; max-width: 440px; }
+  .homelogo { width: 72px; height: 72px; border-radius: 18px; display: block; margin: 0 auto 14px; box-shadow: var(--shadow); }
+  .hometitle { text-align: center; text-transform: none; letter-spacing: 0; font-size: 22px; color: var(--text); margin: 0 0 22px; }
+  .homecard { width: 100%; display: flex; align-items: center; gap: 16px; text-align: left; border: 1px solid var(--line);
+    background: var(--card); color: var(--text); border-radius: 18px; padding: 20px 18px; margin-bottom: 14px; box-shadow: var(--shadow); font: inherit; }
+  .homecard:active { transform: scale(.99); }
+  .homeico { width: 56px; height: 56px; border-radius: 16px; display: grid; place-items: center; flex: none; }
+  .homeico svg { width: 28px; height: 28px; }
+  .homename { display: block; font-size: 20px; font-weight: 700; }
+  .homesub { display: block; font-size: 14px; color: var(--muted); margin-top: 2px; }
+
+  /* Projekte */
+  input[type=search], input[type=tel] { width: 100%; font: inherit; color: var(--text); background: var(--card); border: 1px solid var(--line);
+    border-radius: 10px; padding: 12px; }
+  input[type=tel] { background: var(--bg); }
+  .pickbtn { width: 100%; display: flex; align-items: center; gap: 10px; text-align: left; font: inherit; color: var(--text);
+    background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+  .pickbtn .main { flex: 1; display: flex; flex-direction: column; }
+  .pickbtn .placeholder { color: var(--muted); }
+  .pill { background: var(--accent-soft); color: var(--accent); font-size: 12px; font-weight: 700; border-radius: 999px; padding: 3px 9px; white-space: nowrap; }
+  .backlink { border: 0; background: transparent; color: var(--accent); font: inherit; font-weight: 600; padding: 0 0 10px; }
+  .prhead { padding: 16px 14px 14px; }
+  .prtitle { font-size: 21px; font-weight: 700; }
+  .prcust { color: var(--muted); margin-top: 2px; }
+  .status { color: var(--ok); font-weight: 600; }
+  .status.closed { color: var(--muted); }
+  .infos { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+  .inforow { display: flex; gap: 10px; align-items: baseline; color: var(--text); text-decoration: none; font-size: 15px; }
+  a.inforow { color: var(--accent); }
+  .ico { width: 20px; text-align: center; flex: none; }
+  .btnrow { display: flex; gap: 10px; }
+  .btnrow .btn { flex: 1; }
+  .seg { display: flex; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 4px; margin: 16px 0 12px; }
+  .seg button { flex: 1; border: 0; background: transparent; color: var(--muted); font: inherit; font-weight: 600; padding: 10px; border-radius: 9px; }
+  .seg button.on { background: var(--accent); color: var(--accent-text); }
+  .composer { padding: 12px; }
+  .composer textarea { min-height: 90px; }
+  .cmpbar { display: flex; gap: 10px; }
+  .cmpbar .btn { margin-top: 10px; }
+  .cmpbar .photobtn { flex: 0 0 auto; width: auto; padding: 14px 16px; }
+  .photobtn { cursor: pointer; text-align: center; }
+  .entry { align-items: flex-start; }
+  .entry .check { margin-top: 2px; }
+  .pre { white-space: pre-wrap; word-break: break-word; }
+  .note { display: block; width: 100%; padding: 12px 14px; margin-top: 10px; text-align: left; }
+  .thumbs { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .thumbwrap { position: relative; }
+  .thumb { width: 72px; height: 72px; object-fit: cover; border-radius: 10px; background: var(--bg); border: 1px solid var(--line); display: block; }
+  .thumb.missing { opacity: .4; }
+  .thumbdel { position: absolute; top: -6px; right: -6px; width: 24px; height: 24px; border-radius: 50%; border: 0;
+    background: var(--danger); color: #fff; font-size: 16px; line-height: 1; }
+  .photoview { position: fixed; inset: 0; z-index: 40; background: rgba(0,0,0,.92); display: none; align-items: center; justify-content: center; }
+  .photoview.show { display: flex; }
+  .photoview img { max-width: 100%; max-height: 100%; object-fit: contain; }
   .mailpreview { background: #ffffff; border-radius: 10px; padding: 10px; overflow-x: auto; }
   .syncbox { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 550; }
   .syncdot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); flex: none; }
@@ -187,15 +249,39 @@
       <span></span><button data-k="0">0</button><button class="plain" data-k="del" aria-label="Löschen">⌫</button>
     </div>
     <label class="switch"><input type="checkbox" id="lockRemember"> Auf diesem Gerät merken</label>
-    <div class="hint" style="opacity:.6;margin-top:14px">v2.2</div>
+    <div class="hint" style="opacity:.6;margin-top:14px">v3.0</div>
   </div>
 </div>
 <header>
+  <button class="homebtn" id="btnHome" aria-label="Zur Startseite">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+  </button>
   <div style="flex:1">
-    <h1>Material nachfüllen</h1>
+    <h1 id="hdrTitle">Material nachfüllen</h1>
     <div class="sub" id="hdrVehicle">Ford Transit</div>
   </div>
 </header>
+
+<div id="home" class="hidden">
+  <div class="homeinner">
+    <img src="icon-192.png?v=3" alt="" class="homelogo">
+    <h2 class="hometitle">Was möchtest du öffnen?</h2>
+    <button class="homecard" data-area="material">
+      <span class="homeico" style="background:#e3ecfa;color:#1f5fbf">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5v8l9 5 9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg>
+      </span>
+      <span class="main"><span class="homename">Material</span><span class="homesub" id="homeMatSub">Nachfüllen, Auftrag, Inventar</span></span>
+      <span class="chev">›</span>
+    </button>
+    <button class="homecard" data-area="projekte">
+      <span class="homeico" style="background:#fff0e3;color:#e0661f">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M8 13h8"/></svg>
+      </span>
+      <span class="main"><span class="homename">Projekte</span><span class="homesub" id="homePrSub">Kunden, Aufgaben &amp; Notizen</span></span>
+      <span class="chev">›</span>
+    </button>
+  </div>
+</div>
 
 <main>
   <!-- ERFASSEN -->
@@ -210,6 +296,34 @@
     <div id="openActions"></div>
     <div id="doneWrap"></div>
   </section>
+
+  <!-- PROJEKTE -->
+  <section class="view" id="v-projekte">
+    <input type="search" id="prSearch" placeholder="Projekt oder Kunde suchen" autocomplete="off" style="margin-bottom:10px">
+    <div class="chips" id="prFilter"></div>
+    <div id="prList"></div>
+  </section>
+
+  <section class="view" id="v-projekt-neu">
+    <h2>Neues Projekt</h2>
+    <div class="card" style="padding:4px 14px 14px">
+      <label class="f">Kunde</label>
+      <button class="pickbtn" id="pnCustomer"></button>
+      <label class="f" for="pnName">Projektname</label>
+      <input type="text" id="pnName" placeholder="z.B. Sitzungszimmer 3. OG" autocomplete="off">
+      <label class="f" for="pnAddress">Adresse (optional)</label>
+      <input type="text" id="pnAddress" placeholder="Strasse, PLZ Ort" autocomplete="off">
+      <label class="f" for="pnContact">Kontaktperson (optional)</label>
+      <input type="text" id="pnContact" placeholder="Name" autocomplete="off">
+      <label class="f" for="pnPhone">Telefon (optional)</label>
+      <input type="tel" id="pnPhone" autocomplete="off">
+      <label class="f" for="pnEmail">E-Mail (optional)</label>
+      <input type="email" id="pnEmail" autocomplete="off">
+    </div>
+    <button class="btn" id="pnSave">Projekt eröffnen</button>
+  </section>
+
+  <section class="view" id="v-projekt"><div id="prDetail"></div></section>
 
   <!-- INVENTAR -->
   <section class="view" id="v-inventar">
@@ -233,8 +347,10 @@
     <div class="card" style="padding:12px 14px 14px">
       <div class="syncbox"><span class="syncdot" id="syncDot"></span><span id="syncStatus"></span></div>
       <button class="btn secondary" id="btnSyncNow">Jetzt synchronisieren</button>
-      <p class="hint" style="margin-top:14px">Der Katalog wird auf GitHub gespeichert und auf allen Geräten automatisch geladen.
-        Zum <b>Bearbeiten</b> braucht das Gerät einen GitHub-Token. Ohne Token wird der Katalog nur gelesen.</p>
+      <p class="hint" style="margin-top:14px">Katalog und Inventar liegen auf GitHub und werden auf allen Geräten automatisch geladen.
+        Zum <b>Bearbeiten</b> braucht das Gerät einen GitHub-Token. Ohne Token wird der Katalog nur gelesen.
+        <b>Projekte</b> (Kunden, Notizen, Fotos) liegen im privaten Repo <i>material-daten</i> und brauchen immer den Token –
+        ohne bleiben sie nur auf diesem Gerät.</p>
       <label class="f" for="ghToken">GitHub-Token</label>
       <input type="password" id="ghToken" placeholder="github_pat_…" autocomplete="off" spellcheck="false">
       <button class="btn" id="btnTokenSave">Token speichern &amp; prüfen</button>
@@ -243,7 +359,7 @@
         <ol class="hint" style="padding-left:18px;margin:8px 0 0">
           <li>Auf github.com einloggen und <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">diesen Link</a> öffnen.</li>
           <li>Name: <i>Material-App</i>, Ablauf nach Wunsch (z.B. 1 Jahr).</li>
-          <li>Repository access: <b>Only select repositories</b> → <b>material-app</b>.</li>
+          <li>Repository access: <b>Only select repositories</b> → <b>material-app</b> und <b>material-daten</b>.</li>
           <li>Permissions → Repository permissions → <b>Contents: Read and write</b>.</li>
           <li><b>Generate token</b>, kopieren und hier einfügen.</li>
         </ol>
@@ -280,11 +396,11 @@
     <button class="btn secondary" id="btnExport">Sicherung exportieren</button>
     <button class="btn secondary" id="btnImport">Sicherung importieren</button>
     <input type="file" id="importFile" accept="application/json" hidden>
-    <p class="hint" style="text-align:center;margin-top:18px">Material Transit · v2.2</p>
+    <p class="hint" style="text-align:center;margin-top:18px">Material Transit · v3.0</p>
   </section>
 </main>
 
-<nav>
+<nav id="navMaterial">
   <button data-view="erfassen" class="on">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
     Erfassen</button>
@@ -299,10 +415,25 @@
     Einstellungen</button>
 </nav>
 
+<nav id="navProjekte" hidden>
+  <button data-view="projekte">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+    Projekte</button>
+  <button data-view="projekt-neu">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+    Erfassen</button>
+  <button data-view="settings">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+    Einstellungen</button>
+</nav>
+
+<div class="photoview" id="photoView"><img id="photoViewImg" alt="Foto"></div>
+
 <div class="backdrop" id="backdrop"></div>
 <div class="sheet" id="sheet"></div>
 <div class="toast" id="toast"><span id="toastText"></span><button id="toastBtn"></button></div>
 
-<script src="app.js?v=11"></script>
+<script src="app.js?v=12"></script>
+<script src="projects.js?v=12"></script>
 </body>
 </html>
