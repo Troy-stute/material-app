@@ -1,5 +1,5 @@
-const CACHE = 'material-transit-v12';
-const FILES = ['./', 'index.html', 'app.js?v=12', 'projects.js?v=12', 'manifest.json', 'icon-192.png?v=3', 'icon-512.png?v=3'];
+const CACHE = 'material-transit-v13';
+const FILES = ['./', 'index.html', 'app.js?v=13', 'projects.js?v=13', 'manifest.json', 'icon-192.png?v=3', 'icon-512.png?v=3'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE)

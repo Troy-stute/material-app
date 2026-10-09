@@ -854,7 +854,15 @@ async function fetchRemote(doc) {
   const { repo, path } = DOCS[doc];
   const res = await fetch(`${repo.base}${path}?ref=${repo.branch}&t=${Date.now()}`, { headers: ghHeaders(), cache: 'no-store' });
   if (res.status === 401) throw new Error('Token ungültig oder abgelaufen');
-  if (res.status === 404 && DOCS[doc].private) throw new Error('Token hat keinen Zugriff auf material-daten');
+  if (res.status === 404 && DOCS[doc].private) {
+    // Je nach Token-Art ist die Lösung eine andere
+    const t = state.settings.ghToken;
+    throw new Error(t.startsWith('github_pat_')
+      ? 'Kein Zugriff auf material-daten: Token auf GitHub bearbeiten (Edit) und bei „Repository access“ material-daten hinzufügen'
+      : t.startsWith('ghp_')
+        ? 'Kein Zugriff auf material-daten: Klassischer Token braucht den Haken bei „repo“ (nicht nur public_repo)'
+        : 'Token hat keinen Zugriff auf material-daten');
+  }
   if (res.status === 404 && doc !== 'catalog') return { sha: null, items: [] }; // Datei wird beim ersten Speichern angelegt
   if (!res.ok) throw new Error('Server antwortet nicht (' + res.status + ')');
   const json = await res.json();
