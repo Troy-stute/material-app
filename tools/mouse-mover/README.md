@@ -17,6 +17,12 @@ Während die App aktiv ist:
 - sendet sie optional die Taste **F15** (gibt es auf normalen Tastaturen nicht, löst nichts aus),
 - verhindert sie Standby und das Abschalten des Bildschirms.
 
+## Einstellungen
+
+Über das Zahnrad oben rechts lässt sich das Design wählen: **Klassisch**, **Modern**
+(Standard) oder **Pink**. Design, Intervall und F15-Option werden in einer
+`MouseMover.ini` direkt neben der `.exe` gespeichert – die App bleibt so portabel.
+
 © 2026 Stutz
 
 Hinweis: Beim ersten Start kann Windows SmartScreen warnen, weil die Datei nicht

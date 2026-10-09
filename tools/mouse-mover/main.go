@@ -10,167 +10,80 @@ import (
 	"fmt"
 	"runtime"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 	"unsafe"
 )
 
-var (
-	user32   = syscall.NewLazyDLL("user32.dll")
-	kernel32 = syscall.NewLazyDLL("kernel32.dll")
-	gdi32    = syscall.NewLazyDLL("gdi32.dll")
-
-	pRegisterClassExW        = user32.NewProc("RegisterClassExW")
-	pCreateWindowExW         = user32.NewProc("CreateWindowExW")
-	pDefWindowProcW          = user32.NewProc("DefWindowProcW")
-	pGetMessageW             = user32.NewProc("GetMessageW")
-	pIsDialogMessageW        = user32.NewProc("IsDialogMessageW")
-	pTranslateMessage        = user32.NewProc("TranslateMessage")
-	pDispatchMessageW        = user32.NewProc("DispatchMessageW")
-	pPostQuitMessage         = user32.NewProc("PostQuitMessage")
-	pSendMessageW            = user32.NewProc("SendMessageW")
-	pSetWindowTextW          = user32.NewProc("SetWindowTextW")
-	pGetWindowTextW          = user32.NewProc("GetWindowTextW")
-	pEnableWindow            = user32.NewProc("EnableWindow")
-	pSetTimer                = user32.NewProc("SetTimer")
-	pKillTimer               = user32.NewProc("KillTimer")
-	pSendInput               = user32.NewProc("SendInput")
-	pLoadIconW               = user32.NewProc("LoadIconW")
-	pLoadCursorW             = user32.NewProc("LoadCursorW")
-	pGetDC                   = user32.NewProc("GetDC")
-	pReleaseDC               = user32.NewProc("ReleaseDC")
-	pAdjustWindowRectEx      = user32.NewProc("AdjustWindowRectEx")
-	pGetSystemMetrics        = user32.NewProc("GetSystemMetrics")
-	pShowWindow              = user32.NewProc("ShowWindow")
-	pUpdateWindow            = user32.NewProc("UpdateWindow")
-	pGetModuleHandleW        = kernel32.NewProc("GetModuleHandleW")
-	pSetThreadExecutionState = kernel32.NewProc("SetThreadExecutionState")
-	pGetDeviceCaps           = gdi32.NewProc("GetDeviceCaps")
-	pCreateFontW             = gdi32.NewProc("CreateFontW")
-	pDeleteObject            = gdi32.NewProc("DeleteObject")
-)
-
 const (
-	wsOverlapped   = 0x00000000
-	wsCaption      = 0x00C00000
-	wsSysMenu      = 0x00080000
-	wsMinimizeBox  = 0x00020000
-	wsChild        = 0x40000000
-	wsVisible      = 0x10000000
-	wsTabStop      = 0x00010000
-	wsExClientEdge = 0x00000200
-	esNumber       = 0x2000
-	esCenter       = 0x0001
-	bsDefPushBtn   = 0x0001
-	bsAutoCheckBox = 0x0003
+	copyright = "© 2026 Stutz"
 
-	wmDestroy  = 0x0002
-	wmSetFont  = 0x0030
-	wmCommand  = 0x0111
-	wmTimer    = 0x0113
-	bmGetCheck = 0x00F0
-	bmSetCheck = 0x00F1
-	emLimitTxt = 0x00C5
-
-	inputMouse    = 0
-	inputKeyboard = 1
-	mouseMove     = 0x0001
-	keyUp         = 0x0002
-	vkF15         = 0x7E
-
-	esContinuous      = 0x80000000
-	esSystemRequired  = 0x00000001
-	esDisplayRequired = 0x00000002
-
-	colorBtnFace = 15
-	logPixelsY   = 90
-	swShow       = 5
-
+	idOK     = 1 // kommt von der Enter-Taste über IsDialogMessage
 	idEdit   = 101
 	idButton = 102
 	idCheck  = 103
+	idGear   = 104
+	idDesign = 200
 	idTimer  = 1
-	idOK     = 1
-	ssRight  = 0x0002
-
-	copyright = "© 2026 Stutz"
 )
-
-type wndClassEx struct {
-	cbSize        uint32
-	style         uint32
-	lpfnWndProc   uintptr
-	cbClsExtra    int32
-	cbWndExtra    int32
-	hInstance     uintptr
-	hIcon         uintptr
-	hCursor       uintptr
-	hbrBackground uintptr
-	lpszMenuName  *uint16
-	lpszClassName *uint16
-	hIconSm       uintptr
-}
-
-type msg struct {
-	hwnd    uintptr
-	message uint32
-	wParam  uintptr
-	lParam  uintptr
-	time    uint32
-	ptX     int32
-	ptY     int32
-	private uint32
-}
-
-type rect struct{ left, top, right, bottom int32 }
-
-// input entspricht der Win32-Struktur INPUT (Union auf MOUSEINPUT-Größe).
-type input struct {
-	typ   uint32
-	_     uint32
-	data  [24]byte
-	extra uintptr
-}
-
-type mouseInput struct {
-	dx, dy    int32
-	mouseData uint32
-	flags     uint32
-	time      uint32
-}
-
-type keybdInput struct {
-	vk, scan uint16
-	flags    uint32
-	time     uint32
-}
 
 var (
-	dpi                           = 96
-	hEdit, hButton, hStatus, hChk uintptr
-	running                       bool
-	interval, remaining           int
-	moves                         int
-	lastMove                      time.Time
+	dpi                                    = 96
+	hEdit, hButton, hStatus, hChk          uintptr
+	hGear, hCopy                           uintptr
+	fontMain, fontSemi, fontTitle, fontSml uintptr
+	f15                                    = true
+	running                                bool
+	interval, remaining                    int
+	moves                                  int
+	lastMove                               time.Time
 )
 
-func utf16(s string) *uint16 { p, _ := syscall.UTF16PtrFromString(s); return p }
+// Einstellungen liegen portabel neben der Programmdatei (MouseMover.ini).
+func iniPath() string {
+	buf := make([]uint16, 1024)
+	pGetModuleFileNameW.Call(0, uintptr(unsafe.Pointer(&buf[0])), uintptr(len(buf)))
+	p := syscall.UTF16ToString(buf)
+	if i := strings.LastIndex(strings.ToLower(p), ".exe"); i >= 0 {
+		p = p[:i]
+	}
+	return p + ".ini"
+}
 
-func scale(v int) int { return v * dpi / 96 }
-
-func setText(h uintptr, s string) { pSetWindowTextW.Call(h, uintptr(unsafe.Pointer(utf16(s)))) }
-
-func getText(h uintptr) string {
-	buf := make([]uint16, 32)
-	pGetWindowTextW.Call(h, uintptr(unsafe.Pointer(&buf[0])), uintptr(len(buf)))
+func iniGet(key, def string) string {
+	buf := make([]uint16, 64)
+	pGetPrivateProfileStringW.Call(str("Einstellungen"), str(key), str(def),
+		uintptr(unsafe.Pointer(&buf[0])), uintptr(len(buf)), str(iniPath()))
 	return syscall.UTF16ToString(buf)
 }
 
-func control(parent uintptr, class, text string, style, exStyle uintptr, x, y, w, h, id int, font uintptr) uintptr {
-	hwnd, _, _ := pCreateWindowExW.Call(exStyle,
-		uintptr(unsafe.Pointer(utf16(class))), uintptr(unsafe.Pointer(utf16(text))),
+func iniSet(key, val string) {
+	pWritePrivateProfileStringW.Call(str("Einstellungen"), str(key), str(val), str(iniPath()))
+}
+
+func saveSettings() {
+	iniSet("Design", th().key)
+	iniSet("Intervall", getText(hEdit))
+	iniSet("F15", map[bool]string{true: "1", false: "0"}[f15])
+}
+
+func loadSettings() (interval string) {
+	d := iniGet("Design", "modern")
+	for i, t := range themes {
+		if t.key == d {
+			cur = i
+		}
+	}
+	f15 = iniGet("F15", "1") != "0"
+	return iniGet("Intervall", "60")
+}
+
+func control(parent uintptr, class, text string, style, exStyle uintptr, r rect, id int, font uintptr) uintptr {
+	r = scaled(r)
+	hwnd, _, _ := pCreateWindowExW.Call(exStyle, str(class), str(text),
 		wsChild|wsVisible|style,
-		uintptr(scale(x)), uintptr(scale(y)), uintptr(scale(w)), uintptr(scale(h)),
+		uintptr(r.left), uintptr(r.top), uintptr(r.right-r.left), uintptr(r.bottom-r.top),
 		parent, uintptr(id), 0, 0)
 	pSendMessageW.Call(hwnd, wmSetFont, font, 1)
 	return hwnd
@@ -185,7 +98,7 @@ func jiggle() {
 		*(*mouseInput)(unsafe.Pointer(&i.data[0])) = mouseInput{dx: dx, flags: mouseMove}
 		in = append(in, i)
 	}
-	if r, _, _ := pSendMessageW.Call(hChk, bmGetCheck, 0, 0); r == 1 {
+	if f15 {
 		for _, f := range []uint32{0, keyUp} {
 			i := input{typ: inputKeyboard}
 			*(*keybdInput)(unsafe.Pointer(&i.data[0])) = keybdInput{vk: vkF15, flags: f}
@@ -209,6 +122,10 @@ func updateStatus() {
 	setText(hStatus, s)
 }
 
+func redraw(hwnd uintptr) {
+	pRedrawWindow.Call(hwnd, 0, 0, rdwInvalidate|rdwErase|rdwAllChildren)
+}
+
 func start(hwnd uintptr) {
 	n, err := strconv.Atoi(getText(hEdit))
 	if err != nil || n < 1 {
@@ -219,12 +136,13 @@ func start(hwnd uintptr) {
 	}
 	setText(hEdit, strconv.Itoa(n))
 	interval, remaining, moves, running = n, n, 0, true
+	saveSettings()
 	// Verhindert zusätzlich Standby und Bildschirmabschaltung, solange aktiv.
 	pSetThreadExecutionState.Call(esContinuous | esSystemRequired | esDisplayRequired)
 	pSetTimer.Call(hwnd, idTimer, 1000, 0)
 	pEnableWindow.Call(hEdit, 0)
-	setText(hButton, "Stopp")
 	updateStatus()
+	redraw(hwnd)
 }
 
 func stop(hwnd uintptr) {
@@ -232,20 +150,34 @@ func stop(hwnd uintptr) {
 	pKillTimer.Call(hwnd, idTimer)
 	pSetThreadExecutionState.Call(esContinuous)
 	pEnableWindow.Call(hEdit, 1)
-	setText(hButton, "Start")
 	updateStatus()
+	redraw(hwnd)
 }
 
 func wndProc(hwnd uintptr, m uint32, wParam, lParam uintptr) uintptr {
 	switch m {
 	case wmCommand:
-		// idOK (1) kommt von der Enter-Taste über IsDialogMessage.
-		if id := wParam & 0xFFFF; id == idButton || id == idOK {
+		id, code := wParam&0xFFFF, wParam>>16&0xFFFF
+		switch {
+		case id == idButton || id == idOK:
 			if running {
 				stop(hwnd)
 			} else {
 				start(hwnd)
 			}
+			return 0
+		case id == idCheck && (code == bnClicked || code == bnDoubleClick):
+			f15 = !f15
+			pInvalidateRect.Call(hChk, 0, 1)
+			saveSettings()
+			return 0
+		case id == idGear && code == bnClicked:
+			showDesignMenu(hwnd)
+			return 0
+		case id == idEdit && (code == enSetFocus || code == enKillFocus):
+			editFocus = code == enSetFocus
+			r := scaled(rcField)
+			pInvalidateRect.Call(hwnd, ptr(&r), 1)
 			return 0
 		}
 	case wmTimer:
@@ -256,7 +188,21 @@ func wndProc(hwnd uintptr, m uint32, wParam, lParam uintptr) uintptr {
 		}
 		updateStatus()
 		return 0
+	case wmEraseBkgnd:
+		var r rect
+		pGetClientRect.Call(hwnd, ptr(&r))
+		pFillRect.Call(wParam, ptr(&r), bgBrush)
+		return 1
+	case wmPaint:
+		paintBackground(hwnd)
+		return 0
+	case wmDrawItem:
+		onDrawItem((*drawItem)(unsafe.Pointer(lParam)))
+		return 1
+	case wmCtlColorEdit, wmCtlColorStatic:
+		return onCtlColor(m, wParam, lParam)
 	case wmDestroy:
+		saveSettings()
 		pSetThreadExecutionState.Call(esContinuous)
 		pPostQuitMessage.Call(0)
 		return 0
@@ -274,6 +220,14 @@ func main() {
 	}
 	pReleaseDC.Call(0, hdc)
 
+	var token uintptr
+	gpInput := struct {
+		version  uint32
+		callback uintptr
+		s1, s2   int32
+	}{version: 1}
+	pGdiplusStartup.Call(ptr(&token), ptr(&gpInput), 0)
+
 	hInst, _, _ := pGetModuleHandleW.Call(0)
 	icon, _, _ := pLoadIconW.Call(hInst, 1) // eingebettetes Icon (Ressourcen-ID 1)
 	if icon == 0 {
@@ -287,50 +241,52 @@ func main() {
 		hIcon:         icon,
 		hIconSm:       icon,
 		hCursor:       cursor,
-		hbrBackground: colorBtnFace + 1,
 		lpszClassName: className,
 	}
 	wc.cbSize = uint32(unsafe.Sizeof(wc))
-	pRegisterClassExW.Call(uintptr(unsafe.Pointer(&wc)))
+	pRegisterClassExW.Call(ptr(&wc))
 
-	style := uintptr(wsOverlapped | wsCaption | wsSysMenu | wsMinimizeBox)
-	r := rect{0, 0, int32(scale(260)), int32(scale(200))}
-	pAdjustWindowRectEx.Call(uintptr(unsafe.Pointer(&r)), style, 0, 0)
+	style := uintptr(wsOverlapped | wsCaption | wsSysMenu | wsMinimizeBox | wsClipChildren)
+	r := rect{0, 0, int32(scale(clientW)), int32(scale(clientH))}
+	pAdjustWindowRectEx.Call(ptr(&r), style, 0, 0)
 	w, h := r.right-r.left, r.bottom-r.top
 	sw, _, _ := pGetSystemMetrics.Call(0)
 	sh, _, _ := pGetSystemMetrics.Call(1)
 
-	hwnd, _, _ := pCreateWindowExW.Call(0,
-		uintptr(unsafe.Pointer(className)), uintptr(unsafe.Pointer(utf16("Mouse Mover"))),
+	hwnd, _, _ := pCreateWindowExW.Call(0, uintptr(unsafe.Pointer(className)), str("Mouse Mover"),
 		style, (sw-uintptr(w))/2, (sh-uintptr(h))/2, uintptr(w), uintptr(h), 0, 0, hInst, 0)
 
-	fontHeight := -(9 * dpi / 72) // 9 pt
-	font, _, _ := pCreateFontW.Call(uintptr(fontHeight), 0, 0, 0, 400, 0, 0, 0, 1, 0, 0, 5, 0,
-		uintptr(unsafe.Pointer(utf16("Segoe UI"))))
-	defer pDeleteObject.Call(font)
+	fontMain = createFont(9, 400)
+	fontSemi = createFont(9, 600)
+	fontTitle = createFont(13, 600)
+	fontSml = createFont(8, 400)
 
-	control(hwnd, "STATIC", "Intervall (Sekunden):", 0, 0, 16, 19, 140, 20, 0, font)
-	hEdit = control(hwnd, "EDIT", "60", wsTabStop|esNumber|esCenter, wsExClientEdge, 164, 16, 80, 24, idEdit, font)
-	pSendMessageW.Call(hEdit, emLimitTxt, 4, 0)
-	hChk = control(hwnd, "BUTTON", "Zusätzlich F15-Taste senden", wsTabStop|bsAutoCheckBox, 0, 16, 50, 228, 22, idCheck, font)
-	pSendMessageW.Call(hChk, bmSetCheck, 1, 0)
-	hButton = control(hwnd, "BUTTON", "Start", wsTabStop|bsDefPushBtn, 0, 16, 82, 228, 32, idButton, font)
-	hStatus = control(hwnd, "STATIC", "Gestoppt", 0, 0, 16, 126, 228, 40, 0, font)
-	control(hwnd, "STATIC", copyright, ssRight, 0, 16, 174, 228, 20, 0, font)
+	savedInterval := loadSettings()
 
+	control(hwnd, "STATIC", "Mouse Mover", 0, 0, rcTitle, 0, fontTitle)
+	hGear = control(hwnd, "BUTTON", "Einstellungen", wsTabStop|bsOwnerDraw, 0, rcGear, idGear, fontMain)
+	control(hwnd, "STATIC", "Intervall (Sekunden)", 0, 0, rcLabel, 0, fontMain)
+	hEdit = control(hwnd, "EDIT", savedInterval, wsTabStop|esNumber|esCenter, 0, rcEditMod, idEdit, fontMain)
+	pSendMessageW.Call(hEdit, emLimitText, 4, 0)
+	hChk = control(hwnd, "BUTTON", "Zusätzlich F15-Taste senden", wsTabStop|bsOwnerDraw, 0, rcToggle, idCheck, fontMain)
+	hButton = control(hwnd, "BUTTON", "Start", wsTabStop|bsOwnerDraw, 0, rcButton, idButton, fontMain)
+	hStatus = control(hwnd, "STATIC", "Gestoppt", 0, 0, rcStatus, 0, fontMain)
+	hCopy = control(hwnd, "STATIC", copyright, ssRight, 0, rcCopy, 0, fontSml)
+
+	applyTheme(hwnd, cur)
 	pShowWindow.Call(hwnd, swShow)
 	pUpdateWindow.Call(hwnd)
 
 	var m msg
 	for {
-		ret, _, _ := pGetMessageW.Call(uintptr(unsafe.Pointer(&m)), 0, 0, 0)
+		ret, _, _ := pGetMessageW.Call(ptr(&m), 0, 0, 0)
 		if int32(ret) <= 0 {
 			break
 		}
-		if r, _, _ := pIsDialogMessageW.Call(hwnd, uintptr(unsafe.Pointer(&m))); r != 0 {
+		if r, _, _ := pIsDialogMessageW.Call(hwnd, ptr(&m)); r != 0 {
 			continue
 		}
-		pTranslateMessage.Call(uintptr(unsafe.Pointer(&m)))
-		pDispatchMessageW.Call(uintptr(unsafe.Pointer(&m)))
+		pTranslateMessage.Call(ptr(&m))
+		pDispatchMessageW.Call(ptr(&m))
 	}
 }
