@@ -91,6 +91,9 @@ const (
 	idCheck  = 103
 	idTimer  = 1
 	idOK     = 1
+	ssCenter = 0x0001
+
+	copyright = "© 2026 Stutz"
 )
 
 type wndClassEx struct {
@@ -291,7 +294,7 @@ func main() {
 	pRegisterClassExW.Call(uintptr(unsafe.Pointer(&wc)))
 
 	style := uintptr(wsOverlapped | wsCaption | wsSysMenu | wsMinimizeBox)
-	r := rect{0, 0, int32(scale(260)), int32(scale(176))}
+	r := rect{0, 0, int32(scale(260)), int32(scale(200))}
 	pAdjustWindowRectEx.Call(uintptr(unsafe.Pointer(&r)), style, 0, 0)
 	w, h := r.right-r.left, r.bottom-r.top
 	sw, _, _ := pGetSystemMetrics.Call(0)
@@ -313,6 +316,7 @@ func main() {
 	pSendMessageW.Call(hChk, bmSetCheck, 1, 0)
 	hButton = control(hwnd, "BUTTON", "Start", wsTabStop|bsDefPushBtn, 0, 16, 82, 228, 32, idButton, font)
 	hStatus = control(hwnd, "STATIC", "Gestoppt", 0, 0, 16, 126, 228, 40, 0, font)
+	control(hwnd, "STATIC", copyright, ssCenter, 0, 16, 174, 228, 20, 0, font)
 
 	pShowWindow.Call(hwnd, swShow)
 	pUpdateWindow.Call(hwnd)

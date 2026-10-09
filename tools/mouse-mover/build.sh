@@ -3,6 +3,6 @@
 set -e
 cd "$(dirname "$0")"
 go run ./icongen mousemover.ico
-go run github.com/akavel/rsrc@v0.10.2 -manifest mousemover.manifest -ico mousemover.ico -arch amd64 -o rsrc_windows_amd64.syso
+go run github.com/josephspurrier/goversioninfo/cmd/goversioninfo@v1.7.0 -64 -o rsrc_windows_amd64.syso versioninfo.json
 GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-H windowsgui -s -w" -o MouseMover.exe .
 echo "Fertig: MouseMover.exe"
