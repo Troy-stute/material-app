@@ -79,14 +79,69 @@ func loadSettings() (interval string) {
 	return iniGet("Intervall", "60")
 }
 
-func control(parent uintptr, class, text string, style, exStyle uintptr, r rect, id int, font uintptr) uintptr {
-	r = scaled(r)
-	hwnd, _, _ := pCreateWindowExW.Call(exStyle, str(class), str(text),
-		wsChild|wsVisible|style,
-		uintptr(r.left), uintptr(r.top), uintptr(r.right-r.left), uintptr(r.bottom-r.top),
-		parent, uintptr(id), 0, 0)
-	pSendMessageW.Call(hwnd, wmSetFont, font, 1)
+// ctl merkt sich Position (bei 96 DPI) und Schrift eines Steuerelements,
+// damit es bei einem Wechsel der Bildschirmskalierung neu gesetzt werden kann.
+type ctl struct {
+	h    uintptr
+	r    *rect
+	font *uintptr
+}
+
+var ctls []ctl
+
+func control(parent uintptr, class, text string, style uintptr, r *rect, id int, font *uintptr) uintptr {
+	hwnd, _, _ := pCreateWindowExW.Call(0, str(class), str(text), wsChild|wsVisible|style,
+		0, 0, 0, 0, parent, uintptr(id), 0, 0)
+	ctls = append(ctls, ctl{hwnd, r, font})
 	return hwnd
+}
+
+// layout setzt alle Steuerelemente für die aktuelle Skalierung und das aktuelle Design.
+func layout() {
+	for _, c := range ctls {
+		r := *c.r
+		if c.h == hEdit && th().classic {
+			r = rcEditCls
+		}
+		r = scaled(r)
+		pMoveWindow.Call(c.h, uintptr(r.left), uintptr(r.top), uintptr(r.right-r.left), uintptr(r.bottom-r.top), 1)
+		pSendMessageW.Call(c.h, wmSetFont, *c.font, 1)
+	}
+}
+
+func createFonts() {
+	for _, f := range []uintptr{fontMain, fontSemi, fontTitle, fontSml} {
+		if f != 0 {
+			pDeleteObject.Call(f)
+		}
+	}
+	fontMain = createFont(9, 400)
+	fontSemi = createFont(9, 600)
+	fontTitle = createFont(13, 600)
+	fontSml = createFont(8, 400)
+}
+
+const winStyle = uintptr(wsOverlapped | wsCaption | wsSysMenu | wsMinimizeBox | wsClipChildren)
+
+var winW, winH int32 // feste Fenstergröße (inkl. Rahmen) für die aktuelle Skalierung
+
+// resizeWindow bringt das Fenster exakt auf die Größe des Inhalts. Ohne
+// Position wird es auf dem Arbeitsbereich seines Bildschirms zentriert.
+func resizeWindow(hwnd uintptr, at *rect) {
+	r := rect{0, 0, int32(scale(clientW)), int32(scale(clientH))}
+	adjustWindowRect(&r, winStyle)
+	winW, winH = r.right-r.left, r.bottom-r.top
+	var x, y int32
+	if at != nil {
+		x, y = at.left, at.top
+	} else {
+		mon, _, _ := pMonitorFromWindow.Call(hwnd, 1) // MONITOR_DEFAULTTOPRIMARY
+		mi := monitorInfo{cbSize: uint32(unsafe.Sizeof(monitorInfo{}))}
+		pGetMonitorInfoW.Call(mon, ptr(&mi))
+		w := mi.rcWork
+		x, y = w.left+(w.right-w.left-winW)/2, w.top+(w.bottom-w.top-winH)/2
+	}
+	pSetWindowPos.Call(hwnd, 0, uintptr(x), uintptr(y), uintptr(winW), uintptr(winH), swpNoZOrder|swpNoActivate)
 }
 
 // jiggle bewegt die Maus um 1 Pixel hin und zurück und drückt optional F15
@@ -201,6 +256,20 @@ func wndProc(hwnd uintptr, m uint32, wParam, lParam uintptr) uintptr {
 		return 1
 	case wmCtlColorEdit, wmCtlColorStatic:
 		return onCtlColor(m, wParam, lParam)
+	case wmGetMinMaxInfo:
+		if winW > 0 { // Größe fixieren: kein Aufziehen, Maximieren oder Andocken
+			mm := (*minMaxInfo)(unsafe.Pointer(lParam))
+			size := point{winW, winH}
+			mm.maxSize, mm.minTrackSize, mm.maxTrackSize = size, size, size
+		}
+		return 0
+	case wmDpiChanged:
+		dpi = int(wParam >> 16 & 0xFFFF)
+		createFonts()
+		layout()
+		resizeWindow(hwnd, (*rect)(unsafe.Pointer(lParam)))
+		redraw(hwnd)
+		return 0
 	case wmDestroy:
 		saveSettings()
 		pSetThreadExecutionState.Call(esContinuous)
@@ -213,12 +282,6 @@ func wndProc(hwnd uintptr, m uint32, wParam, lParam uintptr) uintptr {
 
 func main() {
 	runtime.LockOSThread()
-
-	hdc, _, _ := pGetDC.Call(0)
-	if d, _, _ := pGetDeviceCaps.Call(hdc, logPixelsY); d > 0 {
-		dpi = int(d)
-	}
-	pReleaseDC.Call(0, hdc)
 
 	var token uintptr
 	gpInput := struct {
@@ -246,33 +309,26 @@ func main() {
 	wc.cbSize = uint32(unsafe.Sizeof(wc))
 	pRegisterClassExW.Call(ptr(&wc))
 
-	style := uintptr(wsOverlapped | wsCaption | wsSysMenu | wsMinimizeBox | wsClipChildren)
-	r := rect{0, 0, int32(scale(clientW)), int32(scale(clientH))}
-	pAdjustWindowRectEx.Call(ptr(&r), style, 0, 0)
-	w, h := r.right-r.left, r.bottom-r.top
-	sw, _, _ := pGetSystemMetrics.Call(0)
-	sh, _, _ := pGetSystemMetrics.Call(1)
-
+	// Fenster zuerst unsichtbar anlegen, dann nach der Skalierung seines
+	// Bildschirms einrichten, auf exakte Größe bringen und erst dann zeigen.
 	hwnd, _, _ := pCreateWindowExW.Call(0, uintptr(unsafe.Pointer(className)), str("Mouse Mover"),
-		style, (sw-uintptr(w))/2, (sh-uintptr(h))/2, uintptr(w), uintptr(h), 0, 0, hInst, 0)
-
-	fontMain = createFont(9, 400)
-	fontSemi = createFont(9, 600)
-	fontTitle = createFont(13, 600)
-	fontSml = createFont(8, 400)
+		winStyle, 0, 0, 100, 100, 0, 0, hInst, 0)
+	dpi = windowDPI(hwnd)
+	createFonts()
 
 	savedInterval := loadSettings()
 
-	control(hwnd, "STATIC", "Mouse Mover", 0, 0, rcTitle, 0, fontTitle)
-	hGear = control(hwnd, "BUTTON", "Einstellungen", wsTabStop|bsOwnerDraw, 0, rcGear, idGear, fontMain)
-	control(hwnd, "STATIC", "Intervall (Sekunden)", 0, 0, rcLabel, 0, fontMain)
-	hEdit = control(hwnd, "EDIT", savedInterval, wsTabStop|esNumber|esCenter, 0, rcEditMod, idEdit, fontMain)
+	control(hwnd, "STATIC", "Mouse Mover", 0, &rcTitle, 0, &fontTitle)
+	hGear = control(hwnd, "BUTTON", "Einstellungen", wsTabStop|bsOwnerDraw, &rcGear, idGear, &fontMain)
+	control(hwnd, "STATIC", "Intervall (Sekunden)", 0, &rcLabel, 0, &fontMain)
+	hEdit = control(hwnd, "EDIT", savedInterval, wsTabStop|esNumber|esCenter, &rcEditMod, idEdit, &fontMain)
 	pSendMessageW.Call(hEdit, emLimitText, 4, 0)
-	hChk = control(hwnd, "BUTTON", "Zusätzlich F15-Taste senden", wsTabStop|bsOwnerDraw, 0, rcToggle, idCheck, fontMain)
-	hButton = control(hwnd, "BUTTON", "Start", wsTabStop|bsOwnerDraw, 0, rcButton, idButton, fontMain)
-	hStatus = control(hwnd, "STATIC", "Gestoppt", 0, 0, rcStatus, 0, fontMain)
-	hCopy = control(hwnd, "STATIC", copyright, ssRight, 0, rcCopy, 0, fontSml)
+	hChk = control(hwnd, "BUTTON", "Zusätzlich F15-Taste senden", wsTabStop|bsOwnerDraw, &rcToggle, idCheck, &fontMain)
+	hButton = control(hwnd, "BUTTON", "Start", wsTabStop|bsOwnerDraw, &rcButton, idButton, &fontMain)
+	hStatus = control(hwnd, "STATIC", "Gestoppt", 0, &rcStatus, 0, &fontMain)
+	hCopy = control(hwnd, "STATIC", copyright, ssRight, &rcCopy, 0, &fontSml)
 
+	resizeWindow(hwnd, nil)
 	applyTheme(hwnd, cur)
 	pShowWindow.Call(hwnd, swShow)
 	pUpdateWindow.Call(hwnd)

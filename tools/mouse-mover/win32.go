@@ -58,6 +58,10 @@ var (
 	pCheckMenuRadioItem = user32.NewProc("CheckMenuRadioItem")
 	pTrackPopupMenu     = user32.NewProc("TrackPopupMenu")
 	pDestroyMenu        = user32.NewProc("DestroyMenu")
+	pGetDpiForWindow    = user32.NewProc("GetDpiForWindow")
+	pAdjustForDpi       = user32.NewProc("AdjustWindowRectExForDpi")
+	pMonitorFromWindow  = user32.NewProc("MonitorFromWindow")
+	pGetMonitorInfoW    = user32.NewProc("GetMonitorInfoW")
 
 	pGetModuleHandleW           = kernel32.NewProc("GetModuleHandleW")
 	pGetModuleFileNameW         = kernel32.NewProc("GetModuleFileNameW")
@@ -115,6 +119,8 @@ const (
 	ssRight        = 0x0002
 
 	wmDestroy        = 0x0002
+	wmGetMinMaxInfo  = 0x0024
+	wmDpiChanged     = 0x02E0
 	wmPaint          = 0x000F
 	wmEraseBkgnd     = 0x0014
 	wmDrawItem       = 0x002B
@@ -174,6 +180,7 @@ const (
 	swpNoSize        = 0x0001
 	swpNoMove        = 0x0002
 	swpNoZOrder      = 0x0004
+	swpNoActivate    = 0x0010
 	swpFrameChanged  = 0x0020
 	gwlExStyleOffset = -20
 
@@ -249,6 +256,43 @@ type keybdInput struct {
 }
 
 type pointF struct{ x, y float32 }
+
+type point struct{ x, y int32 }
+
+type minMaxInfo struct {
+	reserved, maxSize, maxPosition, minTrackSize, maxTrackSize point
+}
+
+type monitorInfo struct {
+	cbSize    uint32
+	rcMonitor rect
+	rcWork    rect
+	dwFlags   uint32
+}
+
+// windowDPI liefert die Skalierung des Bildschirms, auf dem das Fenster steht.
+func windowDPI(hwnd uintptr) int {
+	if pGetDpiForWindow.Find() == nil {
+		if d, _, _ := pGetDpiForWindow.Call(hwnd); d > 0 {
+			return int(d)
+		}
+	}
+	hdc, _, _ := pGetDC.Call(0)
+	defer pReleaseDC.Call(0, hdc)
+	if d, _, _ := pGetDeviceCaps.Call(hdc, logPixelsY); d > 0 {
+		return int(d)
+	}
+	return 96
+}
+
+// adjustWindowRect rechnet die Client- in die Fenstergröße um (inkl. Rahmen).
+func adjustWindowRect(r *rect, style uintptr) {
+	if pAdjustForDpi.Find() == nil {
+		pAdjustForDpi.Call(ptr(r), style, 0, 0, uintptr(dpi))
+		return
+	}
+	pAdjustWindowRectEx.Call(ptr(r), style, 0, 0)
+}
 
 func utf16(s string) *uint16 { p, _ := syscall.UTF16PtrFromString(s); return p }
 

@@ -101,16 +101,14 @@ func applyTheme(hwnd uintptr, i int) {
 	// Eingabefeld: klassisch mit Windows-Rahmen, sonst randlos in eigenem Rahmen.
 	gwl := gwlExStyleOffset
 	ex, _, _ := pGetWindowLongPtrW.Call(hEdit, uintptr(gwl))
-	er := scaled(rcEditMod)
 	if t.classic {
 		ex |= wsExClientEdge
-		er = scaled(rcEditCls)
 	} else {
 		ex &^= wsExClientEdge
 	}
 	pSetWindowLongPtrW.Call(hEdit, uintptr(gwl), ex)
 	pSetWindowPos.Call(hEdit, 0, 0, 0, 0, 0, swpNoMove|swpNoSize|swpNoZOrder|swpFrameChanged)
-	pMoveWindow.Call(hEdit, uintptr(er.left), uintptr(er.top), uintptr(er.right-er.left), uintptr(er.bottom-er.top), 1)
+	layout()
 
 	// Titelleiste (wirkt ab Windows 11, ältere Versionen ignorieren es).
 	if t.classic {
