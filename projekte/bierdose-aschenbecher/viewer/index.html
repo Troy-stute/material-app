@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bierdose-Aschenbecher 3D</title>
+<meta name="description" content="Interaktives 3D-Modell: 500-ml-Bierdose als versteckter Aschenbecher mit Schraubboden – drehen, zoomen, aufschneiden.">
+<style>
+  :root {
+    --bg: #07080a; --panel: rgba(18, 20, 24, .86); --line: rgba(255, 255, 255, .1);
+    --text: #f1ede4; --muted: #a8b0b7; --accent: #d8b45a; --accent-ink: #1a1408;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+    font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; overflow: hidden; }
+  #c { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  header { position: fixed; left: 16px; top: 14px; right: 16px; display: flex; gap: 12px; align-items: baseline;
+    pointer-events: none; flex-wrap: wrap; }
+  header h1 { margin: 0; font-size: 18px; letter-spacing: .02em; }
+  header span { color: var(--muted); font-size: 13px; }
+  .panel { position: fixed; background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+  #ctrl { right: 16px; bottom: 16px; width: 300px; padding: 14px; display: grid; gap: 12px; }
+  #ctrl h2 { margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: .14em; color: var(--muted); font-weight: 600; }
+  .row { display: flex; gap: 6px; flex-wrap: wrap; }
+  button { appearance: none; border: 1px solid var(--line); background: rgba(255,255,255,.06); color: var(--text);
+    font: inherit; font-size: 13px; padding: 7px 11px; border-radius: 9px; cursor: pointer; }
+  button:hover { background: rgba(255,255,255,.12); }
+  button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+  label.sl { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  #info { left: 16px; bottom: 16px; width: 290px; padding: 14px; font-size: 13px; }
+  #info dl { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; margin: 8px 0 10px; }
+  #info dt { color: var(--muted); } #info dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+  #info a { color: var(--accent); text-decoration: none; } #info a:hover { text-decoration: underline; }
+  #info .dl { display: flex; flex-wrap: wrap; gap: 4px 10px; }
+  #info summary { cursor: pointer; font-weight: 600; }
+  #laden { position: fixed; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 14px; }
+  #hinweis { position: fixed; left: 50%; top: 52px; transform: translateX(-50%); color: var(--muted); font-size: 12px;
+    pointer-events: none; transition: opacity .6s; text-align: center; }
+  @media (max-width: 720px) {
+    #ctrl { left: 16px; right: 16px; width: auto; bottom: 16px; padding: 12px; gap: 9px; }
+    #info { top: 52px; bottom: auto; left: 16px; right: 16px; width: auto; padding: 10px 12px; }
+    #info dl, #info .dl { display: none; } #info[open] dl { display: grid; } #info[open] .dl { display: flex; }
+    #hinweis { display: none; }
+  }
+</style>
+<script type="importmap">{ "imports": { "three": "./vendor/three/three.module.min.js" } }</script>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="laden">3D-Modell wird geladen …</div>
+<header><h1>Bierdose · versteckter Aschenbecher</h1><span>500 ml · Ø 66 × 168 mm · FDM-druckbar</span></header>
+<div id="hinweis">Ziehen zum Drehen · Mausrad / zwei Finger zum Zoomen</div>
+
+<details class="panel" id="info" open>
+  <summary>Kennwerte &amp; Dateien</summary>
+  <dl id="kw">
+    <dt>Aussenmass</dt><dd>Ø 66 × 168 mm</dd>
+    <dt>Innenvolumen</dt><dd id="kw-vol">ca. 340 ml</dd>
+    <dt>Wandstärke</dt><dd>2,6 mm</dd>
+    <dt>Gewinde</dt><dd>Trapez 45°, P 3,5 mm</dd>
+    <dt>Spiel radial / axial</dt><dd>0,35 / 0,4 mm</dd>
+    <dt>Trinköffnung</dt><dd>ca. 18,5 × 17 mm</dd>
+  </dl>
+  <div class="dl">
+    <a href="../stl/dosenkoerper.stl" download>Dosenkörper.stl</a>
+    <a href="../stl/schraubboden.stl" download>Schraubboden.stl</a>
+    <a href="../stl/zuglasche.stl" download>Zuglasche.stl</a>
+    <a href="../step/bierdose_baugruppe.step" download>Baugruppe.step</a>
+  </div>
+</details>
+
+<div class="panel" id="ctrl">
+  <h2>Ansicht</h2>
+  <div class="row" id="presets">
+    <button data-p="gesamt">Gesamt</button><button data-p="oeffnung">Trinköffnung</button><button data-p="boden">Boden</button>
+  </div>
+  <div class="row">
+    <button id="b-schnitt" aria-pressed="false">Schnitt</button>
+    <button id="b-transp" aria-pressed="false">Transparent</button>
+    <button id="b-dreh" aria-pressed="false">Drehen</button>
+    <button id="b-stummel" class="primary">Stummel einwerfen</button>
+  </div>
+  <label class="sl">Boden abschrauben<input id="s-boden" type="range" min="0" max="1" step="0.001" value="0"></label>
+  <label class="sl">Explosionsdarstellung<input id="s-expl" type="range" min="0" max="1" step="0.001" value="0"></label>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from './vendor/three/OrbitControls.js';
+import { baueSzene, setzeKamera, MASSE } from './szene.js';
+
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+const cam = new THREE.PerspectiveCamera(30, 1, 2, 4000);
+const S = await baueSzene(renderer);
+const { scene, dose, welt, teile, stummelGruppe, fallend, zustand } = S;
+document.getElementById('laden').remove();
+fetch('../cad/kennwerte.json').then((r) => r.json()).then((k) => {
+  document.getElementById('kw-vol').textContent = `ca. ${Math.round(k.innenvolumen_ml)} ml`;
+}).catch(() => {});
+
+const controls = new OrbitControls(cam, canvas);
+controls.enableDamping = true; controls.minDistance = 45; controls.maxDistance = 900;
+controls.maxPolarAngle = Math.PI / 2 - 0.03;
+const hoch = innerWidth < innerHeight;
+if (innerWidth < 720) document.getElementById('info').open = false;
+controls.target.set(0, hoch ? 70 : 84, 0); setzeKamera(cam, controls.target, 25, 14, hoch ? 560 : 400); controls.update();
+controls.addEventListener('start', () => { document.getElementById('hinweis').style.opacity = 0; flug = null; });
+
+function resize() {
+  const w = innerWidth, h = innerHeight;
+  renderer.setSize(w, h, false); cam.aspect = w / h;
+  cam.fov = w < h ? 42 : 30; cam.updateProjectionMatrix();
+}
+addEventListener('resize', resize); resize();
+
+// Kamerafahrten
+const PRESETS = {
+  gesamt: [new THREE.Vector3(0, innerWidth < innerHeight ? 70 : 84, 0), 25, 14, innerWidth < innerHeight ? 560 : 400],
+  oeffnung: [new THREE.Vector3(11, 160, 0), 95, 52, 105],
+  boden: [new THREE.Vector3(0, 40, 0), 30, 6, 260],
+};
+let flug = null;
+function fliege(name) {
+  const [z, az, el, d] = PRESETS[name];
+  const ziel = new THREE.Camera(); setzeKamera(ziel, z, az, el, d);
+  flug = { t0: performance.now(), p0: cam.position.clone(), z0: controls.target.clone(), p1: ziel.position.clone(), z1: z.clone() };
+}
+document.querySelectorAll('#presets button').forEach((b) => b.addEventListener('click', () => {
+  fliege(b.dataset.p);
+  if (b.dataset.p === 'boden' && +sBoden.value < 0.5) animiereSlider(sBoden, 1);
+}));
+
+// Schalter
+const toggle = (id, fn) => {
+  const b = document.getElementById(id);
+  b.addEventListener('click', () => { const an = b.getAttribute('aria-pressed') !== 'true'; b.setAttribute('aria-pressed', an); fn(an); });
+  return b;
+};
+let schnitt = false, transp = false, drehen = false;
+const bSchnitt = toggle('b-schnitt', (an) => { schnitt = an; if (an && transp) bTransp.click(); });
+const bTransp = toggle('b-transp', (an) => { transp = an; if (an && schnitt) bSchnitt.click(); });
+toggle('b-dreh', (an) => (drehen = an));
+
+const sBoden = document.getElementById('s-boden'), sExpl = document.getElementById('s-expl');
+function animiereSlider(sl, ziel) {
+  const v0 = +sl.value, t0 = performance.now();
+  const step = (t) => { const u = Math.min(1, (t - t0) / 2200); sl.value = v0 + (ziel - v0) * ease(u); if (u < 1) requestAnimationFrame(step); };
+  requestAnimationFrame(step);
+}
+
+// Stummel-Einwurf
+let einwurf = null;
+document.getElementById('b-stummel').addEventListener('click', () => {
+  sBoden.value = 0; sExpl.value = 0; einwurf = performance.now();
+});
+
+const clamp = (x) => Math.min(1, Math.max(0, x));
+const ease = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+const lerp = (a, b, x) => a + (b - a) * x;
+const P = MASSE.steigung, FREI = MASSE.zapfen - MASSE.fuge, TURNS = FREI / P + 0.12;
+const OEFF = new THREE.Vector3(13, MASSE.panel, 0);
+
+function pose() {
+  const e = +sExpl.value, b = Math.max(+sBoden.value, clamp(e * 2));
+  const e2 = clamp(e * 2 - 1);
+  let lift = 35 * ease(clamp(b * 4));
+  const turns = TURNS * ease(clamp((b - 0.15) / 0.7));
+  let bodenZ = -turns * P - 14 * ease(clamp((b - 0.85) / 0.15));
+  lift += 30 * ease(e2);
+  bodenZ = lerp(bodenZ, -lift, ease(e2));
+  dose.position.y = lift;
+  teile.boden.position.z = bodenZ; teile.boden.rotation.z = -turns * 2 * Math.PI;
+  teile.lasche.position.z = 52 * ease(e2); teile.lasche.rotation.z = -0.25 * ease(e2);
+}
+
+let schnittAktiv = null, transpAktiv = null;
+renderer.setAnimationLoop((t) => {
+  if (flug) {
+    const u = ease(clamp((t - flug.t0) / 1400));
+    cam.position.lerpVectors(flug.p0, flug.p1, u); controls.target.lerpVectors(flug.z0, flug.z1, u);
+    if (u >= 1) flug = null;
+  }
+  if (drehen) welt.rotation.y += 0.006;
+  pose();
+  // Schnitt-Ebene folgt der Blickrichtung
+  if (schnitt) {
+    const d = new THREE.Vector3().subVectors(cam.position, controls.target); d.y = 0; d.normalize().negate();
+    if (schnittAktiv !== true) zustand.setSchnitt(true, d); else S.clipPlane.normal.copy(d);
+    schnittAktiv = true;
+  } else if (schnittAktiv !== false) { zustand.setSchnitt(false); schnittAktiv = false; }
+  if (transp !== transpAktiv) { zustand.setTransparenz(transp ? 0.22 : 1); if (!transp && !schnitt) zustand.setSchnitt(false); transpAktiv = transp; }
+  stummelGruppe.visible = schnitt || transp;
+
+  // Einwurf-Animation (3 s)
+  if (einwurf !== null) {
+    const s = (t - einwurf) / 1000;
+    fallend.visible = s < 3.2 && (s < 1.9 || schnitt || transp);
+    if (s < 1.4) {
+      const a = ease(clamp(s / 1.4));
+      fallend.position.set(lerp(28, OEFF.x, a), lerp(232, 172, a), lerp(-14, 0, a));
+      fallend.rotation.set(0, 0.6, lerp(1.05, 0, a));
+    } else {
+      const f = s - 1.4, y = Math.max(MASSE.zapfen + 9, 172 - 0.5 * 9810 * 0.02 * f * f);
+      fallend.position.set(OEFF.x - 2 * clamp(f), y, 0);
+      const lie = clamp((s - 2.6) / 0.5);
+      fallend.rotation.set(0, 0.6, lie * Math.PI / 2);
+    }
+    if (s > 3.2) { einwurf = null; fallend.visible = false; }
+  }
+  controls.update();
+  renderer.render(scene, cam);
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bierdose – Produktanimation</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #07080a; overflow: hidden; font-family: "DejaVu Sans", Arial, sans-serif; }
+  canvas { display: block; }
+  #cap { position: absolute; left: 4.2vw; bottom: 6vh; color: #f1ede4; opacity: 0; }
+  #cap .nr { font-size: 1.15vw; letter-spacing: .35em; color: #d8b45a; text-transform: uppercase; }
+  #cap .t { font-size: 2.3vw; font-weight: 700; margin-top: .4vw; }
+  #cap .s { font-size: 1.1vw; color: #b9c1c8; margin-top: .4vw; max-width: 40vw; line-height: 1.45; }
+  #cap .bar { width: 3.2vw; height: 3px; background: #d8b45a; margin-bottom: 1vw; }
+  .lbl { position: absolute; color: #f1ede4; font-size: 1.05vw; opacity: 0; white-space: nowrap; }
+  .lbl b { display: block; font-size: 1.25vw; }
+  .lbl span { color: #aab3ba; font-size: .9vw; }
+  .lbl::before { content: ""; position: absolute; left: -5.2vw; top: .9vw; width: 4.6vw; height: 1px; background: #d8b45a; }
+  .lbl::after { content: ""; position: absolute; left: -5.6vw; top: calc(.9vw - 3px); width: 7px; height: 7px; border-radius: 50%; background: #d8b45a; }
+  #titel { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: flex-end;
+    padding-right: 7vw; color: #f1ede4; opacity: 0; text-align: right; }
+  #titel .a { font-size: 4.2vw; font-weight: 700; letter-spacing: .08em; }
+  #titel .b { font-size: 1.35vw; color: #d8b45a; letter-spacing: .3em; margin-top: .6vw; text-transform: uppercase; }
+  #titel .c { font-size: 1.05vw; color: #aab3ba; margin-top: 1.4vw; line-height: 1.6; }
+</style>
+<script type="importmap">{ "imports": { "three": "./vendor/three/three.module.min.js" } }</script>
+</head>
+<body>
+<div id="cap"><div class="bar"></div><div class="nr"></div><div class="t"></div><div class="s"></div></div>
+<div class="lbl" id="l-rumpf"><b>Dosenkörper</b><span>dosenkoerper.stl · stehend, ohne Stützen</span></div>
+<div class="lbl" id="l-lasche"><b>Zuglasche</b><span>zuglasche.stl · optional separat</span></div>
+<div class="lbl" id="l-boden"><b>Schraubboden</b><span>schraubboden.stl · Trapezgewinde P 3,5</span></div>
+<div id="titel"><div class="a">SILBERFALKE</div><div class="b">Premium Lager · 500 ml</div>
+  <div class="c">Vollständig 3D-druckbar · PLA / PETG<br>Abschraubbarer Boden · originalgetreue Trinköffnung</div></div>
+<script type="module">
+import * as THREE from 'three';
+import { baueSzene, setzeKamera, MASSE } from './szene.js';
+
+const W = window.innerWidth, H = window.innerHeight;
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(1); renderer.setSize(W, H);
+document.body.prepend(renderer.domElement);
+const cam = new THREE.PerspectiveCamera(30, W / H, 2, 4000);
+const S = await baueSzene(renderer);
+const { scene, dose, welt, teile, stummelGruppe, fallend, zustand } = S;
+
+const clamp = (x) => Math.min(1, Math.max(0, x));
+const seg = (t, a, b) => clamp((t - a) / (b - a));
+const ease = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+const es = (t, a, b) => ease(seg(t, a, b));
+const lerp = (a, b, x) => a + (b - a) * x;
+const DAUER = 56;
+
+// Kamera-Schlüsselbilder: [t, zielX, zielY, zielZ, azimut, elevation, distanz]
+const K = [
+  [0, 0, 84, 0, -40, 10, 360], [4.5, 0, 84, 0, 140, 13, 335], [9, 0, 86, 0, 320, 15, 330],
+  [12, 5, 140, 0, 385, 32, 190], [15, 9, 160, 0, 440, 46, 100], [18, 11, 161, 0, 452, 42, 86],
+  [21, 10, 158, 0, 462, 38, 96], [24, 0, 95, 0, 395, 15, 300], [27, 0, 80, 0, 382, 12, 275],
+  [30, 0, 55, 0, 380, 8, 225], [33, 0, 60, 0, 395, 5, 280], [37, 0, 48, 0, 410, 3, 250],
+  [39, 0, 62, 0, 415, 7, 300], [42, 0, 108, 0, 425, 12, 480], [46, 0, 104, 0, 415, 12, 460],
+  [49.5, 0, 84, 0, 392, 12, 350], [56, 0, 84, 0, 385, 12, 345],
+];
+function kamera(t) {
+  let i = K.findIndex((k, j) => j < K.length - 1 && t >= k[0] && t <= K[j + 1][0]);
+  if (i < 0) i = t <= 0 ? 0 : K.length - 2;
+  const p0 = K[Math.max(0, i - 1)], p1 = K[i], p2 = K[i + 1], p3 = K[Math.min(K.length - 1, i + 2)];
+  const u = clamp((t - p1[0]) / (p2[0] - p1[0])), dt = p2[0] - p1[0];
+  const out = [];
+  for (let c = 1; c < 7; c++) {
+    const m1 = i > 0 ? ((p2[c] - p0[c]) / (p2[0] - p0[0])) * dt : 0;
+    const m2 = i + 2 < K.length ? ((p3[c] - p1[c]) / (p3[0] - p1[0])) * dt : 0;
+    const u2 = u * u, u3 = u2 * u;
+    out.push((2 * u3 - 3 * u2 + 1) * p1[c] + (u3 - 2 * u2 + u) * m1 + (-2 * u3 + 3 * u2) * p2[c] + (u3 - u2) * m2);
+  }
+  return out;
+}
+
+const OEFF = new THREE.Vector3(13, MASSE.panel, 0);   // Weltkoordinaten der Trinköffnung
+const BODEN_Y = MASSE.zapfen;                          // Innenboden
+const P = MASSE.steigung, FREI = MASSE.zapfen - MASSE.fuge; // 12.5 mm Gewindelänge
+
+function fallPose(t) {
+  // Szene 3: Stummel wird über der Öffnung angesetzt und fällt hinein; Szene 4: landet im Innenraum
+  const s = stummelGruppe;
+  fallend.visible = (t > 15.2 && t < 19.3) || (t > 21.0 && t < 30.3);
+  if (t < 19.3) {
+    const a = es(t, 15.4, 18.0);
+    const y = lerp(232, 170, a), x = lerp(28, OEFF.x, a), z = lerp(-14, 0, a);
+    let tilt = lerp(1.05, 0, es(t, 15.4, 17.6));
+    let yy = y;
+    if (t > 18.0) { const f = t - 18.0; yy = 170 - 0.5 * 9810 * 0.012 * f * f * 1.6; }
+    fallend.position.set(x, yy, z); fallend.rotation.set(0, 0.6, tilt);
+    return;
+  }
+  if (t < 22.6) {
+    const f = Math.max(0, t - 21.2);
+    const y = Math.max(BODEN_Y + 9, 125 - 0.5 * 9810 * 0.012 * f * f * 1.6);
+    fallend.position.set(OEFF.x - 2 * seg(t, 21.2, 22.6), y, 0); fallend.rotation.set(0, 0.6, 0);
+  } else {
+    const a = es(t, 22.6, 23.2);
+    fallend.position.set(lerp(OEFF.x - 2, -2, a), lerp(BODEN_Y + 9, BODEN_Y + 11.2, a), lerp(0, 3, a));
+    fallend.rotation.set(0, 0.6, lerp(0, Math.PI / 2 * 1.02, a));
+  }
+  void s;
+}
+
+const cap = document.getElementById('cap');
+const SZENEN = [
+  [0.6, 8.4, '1 · Produktvorstellung', 'Echte Optik, echte Masse', 'Ø 66 mm · Höhe 168 mm · Etikett mit erhabenen Schriftzügen'],
+  [9.5, 14.6, '2 · Oberseite', 'Originalgetreue Trinköffnung', 'Zuglasche, Niete und eingedrücktes Verschlussblech – keine zusätzlichen Löcher'],
+  [15.3, 20.6, '3 · Funktion', 'Einwurf durch die Trinköffnung', 'Nur für vollständig erloschene Zigarettenstummel'],
+  [21.3, 29.8, '4 · Transparente Schnittansicht', 'Glatter Sammelraum, ca. 340 ml', 'Innenwand ohne Taschen · 45°-Trichter unter dem Deckel'],
+  [30.6, 38.6, '5 · Schraubboden', 'Unsichtbares Trapezgewinde', 'Steigung 3,5 mm · 0,35 mm Spiel für FDM · Trennfuge auf der Bodenkante'],
+  [39.3, 45.6, '6 · Explosionsdarstellung', 'Drei druckbare Bauteile', 'Dosenkörper · Schraubboden · Zuglasche (optional)'],
+  [46.3, 52.0, '7 · Abschluss', 'Zusammengebaut und fertig', ''],
+];
+function caption(t) {
+  const sz = SZENEN.find((s) => t >= s[0] - 0.3 && t <= s[1] + 0.3);
+  if (!sz) { cap.style.opacity = 0; return; }
+  const o = Math.min(seg(t, sz[0] - 0.3, sz[0] + 0.5), 1 - seg(t, sz[1] - 0.5, sz[1] + 0.3));
+  cap.style.opacity = o;
+  cap.querySelector('.nr').textContent = 'Szene ' + sz[2];
+  cap.querySelector('.t').textContent = sz[3];
+  cap.querySelector('.s').textContent = sz[4];
+  cap.style.transform = `translateY(${(1 - o) * 12}px)`;
+}
+
+const v = new THREE.Vector3();
+function label(id, obj, offset, t, a, b) {
+  const el = document.getElementById(id);
+  const o = Math.min(seg(t, a, a + 0.6), 1 - seg(t, b - 0.5, b));
+  el.style.opacity = o;
+  if (o <= 0) return;
+  obj.getWorldPosition(v); v.add(offset); v.project(cam);
+  el.style.left = ((v.x + 1) / 2 * W) + 'px'; el.style.top = ((1 - v.y) / 2 * H - 14) + 'px';
+}
+
+let schnitt = false;
+function renderAt(t) {
+  const [zx, zy, zz, az, el, d] = kamera(t);
+  cam.fov = 30; cam.updateProjectionMatrix();
+  setzeKamera(cam, new THREE.Vector3(zx, zy, zz), az, el, d);
+
+  // --- Zustände
+  let lift = 0, bodenZ = 0, bodenRot = 0, laschenZ = 0, weltRot = 0;
+  // Szene 5: anheben und ausschrauben
+  lift = lerp(0, 35, es(t, 30.5, 32));
+  if (t >= 32) {
+    const turns = lerp(0, FREI / P + 0.12, es(t, 32, 36.6));
+    bodenRot = -turns * 2 * Math.PI; bodenZ = -turns * P;
+    bodenZ = lerp(bodenZ, -35, es(t, 36.6, 38.6));
+    bodenRot -= 0.35 * es(t, 36.6, 38.6);
+  }
+  // Szene 6: Explosion
+  if (t >= 39) {
+    lift = lerp(35, 62, es(t, 39, 41.5));
+    bodenZ = -lift; laschenZ = lerp(0, 52, es(t, 39.5, 42));
+  }
+  // Szene 7: zusammenbauen + Drehung
+  if (t >= 46) {
+    lift = lerp(62, 0, es(t, 46, 49.5));
+    laschenZ = lerp(52, 0, es(t, 46, 47.6));
+    const r0 = -(FREI / P + 0.12) * 2 * Math.PI - 0.35;
+    const a1 = es(t, 46, 47.6), a2 = es(t, 47.6, 49.4);
+    bodenZ = a2 > 0 ? lerp(-FREI - 0.12 * P, 0, a2) : lerp(-62, -FREI - 0.12 * P, a1);
+    bodenRot = a2 > 0 ? lerp(r0 + 0.35, 0, a2) : lerp(r0, r0 + 0.35, a1);
+    weltRot = 2 * Math.PI * es(t, 49.5, 56);
+  }
+  dose.position.y = lift;
+  teile.boden.position.z = bodenZ; teile.boden.rotation.z = bodenRot;
+  teile.lasche.position.z = laschenZ; teile.lasche.rotation.z = -0.25 * seg(laschenZ, 0, 52);
+  welt.rotation.y = weltRot;
+
+  // Szene 4: Transparenz und Schnitt
+  const transp = Math.min(es(t, 21, 22.2), 1 - es(t, 25.3, 25.9));
+  zustand.setTransparenz(1 - 0.8 * transp);
+  const schnittAn = t >= 25.6 && t < 30.2;
+  const aRad = THREE.MathUtils.degToRad(az);
+  const nSchnitt = new THREE.Vector3(-Math.sin(aRad), 0, -Math.cos(aRad));
+  if (schnittAn !== schnitt) { zustand.setSchnitt(schnittAn, nSchnitt); schnitt = schnittAn; }
+  else if (schnittAn) S.clipPlane.normal.copy(nSchnitt);
+  stummelGruppe.visible = t > 20.8 && t < 30.3;
+  fallPose(t);
+
+  caption(t);
+  label('l-rumpf', teile.rumpf, new THREE.Vector3(48, 50, 0), t, 41.8, 45.8);
+  label('l-lasche', teile.lasche, new THREE.Vector3(30, 162, 0), t, 42.2, 45.8);
+  label('l-boden', teile.boden, new THREE.Vector3(46, 10, 0), t, 42.6, 45.8);
+  const ti = document.getElementById('titel');
+  ti.style.opacity = es(t, 52.6, 54.2);
+
+  renderer.render(scene, cam);
+}
+
+// Produktbilder: feste Posen
+function still(name) {
+  zustand.setTransparenz(1); zustand.setSchnitt(false); schnitt = false;
+  for (const id of ['l-rumpf', 'l-lasche', 'l-boden']) document.getElementById(id).style.opacity = 0;
+  cap.style.opacity = 0; document.getElementById('titel').style.opacity = 0;
+  dose.position.y = 0; teile.boden.position.z = 0; teile.boden.rotation.z = 0;
+  teile.lasche.position.z = 0; teile.lasche.rotation.z = 0; welt.rotation.y = 0;
+  stummelGruppe.visible = false; fallend.visible = false;
+  const Z = (x, y, z) => new THREE.Vector3(x, y, z);
+  const posen = {
+    vorne: () => setzeKamera(cam, Z(0, 84, 0), -18, 9, 360),
+    dreiviertel: () => setzeKamera(cam, Z(0, 86, 0), 35, 18, 340),
+    oben: () => setzeKamera(cam, Z(9, 161, 0), 80, 48, 95),
+    oeffnung: () => setzeKamera(cam, Z(12, 161, 0), 95, 62, 60),
+    schnitt: () => {
+      setzeKamera(cam, Z(0, 86, 0), 20, 14, 330);
+      stummelGruppe.visible = true;
+      const a = THREE.MathUtils.degToRad(20); zustand.setSchnitt(true, Z(-Math.sin(a), 0, -Math.cos(a)));
+    },
+    transparent: () => { setzeKamera(cam, Z(0, 86, 0), 20, 14, 330); stummelGruppe.visible = true; zustand.setTransparenz(0.22); },
+    boden: () => {
+      dose.position.y = 35; teile.boden.position.z = -24; teile.boden.rotation.z = -2.3;
+      setzeKamera(cam, Z(0, 40, 0), 25, 6, 230);
+    },
+    explosion: () => {
+      dose.position.y = 62; teile.boden.position.z = -62; teile.lasche.position.z = 52; teile.lasche.rotation.z = -0.25;
+      setzeKamera(cam, Z(0, 108, 0), 425 - 360, 12, 480);
+      label('l-rumpf', teile.rumpf, new THREE.Vector3(48, 50, 0), 44, 0, 99);
+      label('l-lasche', teile.lasche, new THREE.Vector3(30, 162, 0), 44, 0, 99);
+      label('l-boden', teile.boden, new THREE.Vector3(46, 10, 0), 44, 0, 99);
+    },
+    druck: () => {   // Druckteile in Druckorientierung auf der Druckplatte (grau = PLA)
+      const pla = new THREE.MeshPhysicalMaterial({ color: 0x7f878f, roughness: 0.55, metalness: 0.05 });
+      teile.rumpf.traverse((o) => { if (o.isMesh && o.visible) o.material = Array.isArray(o.material) ? o.material.map(() => pla) : pla; });
+      teile.boden.material = pla; teile.lasche.material = pla;
+      S.tisch.material = new THREE.MeshPhysicalMaterial({ color: 0x17181a, roughness: 0.8 });
+      const platte = new THREE.Mesh(new THREE.BoxGeometry(250, 2, 250),
+        new THREE.MeshPhysicalMaterial({ color: 0x2a2724, roughness: 0.55, metalness: 0.3, clearcoat: 0.4 }));
+      platte.position.y = -1.01; platte.receiveShadow = true; S.scene.add(platte);
+      dose.position.y = -10;
+      teile.rumpf.position.x = -42;
+      teile.boden.rotation.x = Math.PI; teile.boden.position.set(46, 10, MASSE.zapfen + 10);
+      teile.lasche.position.set(35, -50, -MASSE.panel + 10); teile.lasche.rotation.z = 0.6;
+      setzeKamera(cam, Z(0, 55, 0), 18, 24, 420);
+    },
+  };
+  posen[name]();
+  renderer.render(scene, cam);
+}
+window.renderAt = renderAt; window.still = still; window.DAUER = DAUER;
+window.S = S; window.bereit = true;
+</script>
+</body>
+</html>

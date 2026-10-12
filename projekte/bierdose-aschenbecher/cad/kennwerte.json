@@ -1,0 +1,41 @@
+{
+  "kollision_schraubbewegung_mm3": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "gegenprobe_nur_drehen_90grad_mm3": 119.9,
+  "gegenprobe_1mm_angehoben_mm3": 674.6,
+  "innenvolumen_ml": 343.9,
+  "trichterbasis_z": 111.4,
+  "dosenkoerper": {
+    "volumen_cm3": 140.2,
+    "bbox_mm": [
+      67.2,
+      67.2,
+      158.0
+    ]
+  },
+  "schraubboden": {
+    "volumen_cm3": 51.6,
+    "bbox_mm": [
+      66.0,
+      66.0,
+      22.5
+    ]
+  },
+  "zuglasche": {
+    "volumen_cm3": 0.2,
+    "bbox_mm": [
+      21.1,
+      13.2,
+      1.2
+    ]
+  }
+}
