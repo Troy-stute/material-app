@@ -6,7 +6,11 @@ Erloschene Zigarettenstummel werden durch die normale Trinköffnung eingeworfen.
 > **Nur für kalte Asche und vollständig erloschene Stummel.** PLA wird ab ca. 55–60 °C weich, PETG ab ca. 75–80 °C.
 > Beides ist brennbar. Das Teil ist kein Ersatz für einen feuerfesten Aschenbecher.
 
-![Produktbild](bilder/01_produkt_vorne.png)
+![Produktbild](bilder/01_produkt_vorne.jpg)
+
+| | | |
+|---|---|---|
+| ![Trinköffnung](bilder/04_trinkoeffnung.jpg) | ![Schnitt](bilder/06_schnittansicht.jpg) | ![Schraubboden](bilder/07_schraubboden.jpg) |
 
 ## Dateien
 
@@ -21,8 +25,8 @@ Erloschene Zigarettenstummel werden durch die normale Trinköffnung eingeworfen.
 | `step/dosenkoerper.step`, `schraubboden.step`, `zuglasche.step` | Einzelteile als STEP |
 | `cad/bierdose.py` | Parametrisches Quellmodell (CadQuery). Alle Masse stehen oben im Block `PARAMETER` |
 | `cad/kennwerte.json` | Volumen, Abmessungen und Ergebnis der Kollisionsprüfung |
-| `bilder/` | Produktbilder |
-| `video/bierdose_aschenbecher.mp4` | 3D-Produktanimation (7 Szenen, 1920×1080) |
+| `bilder/` | 9 Produktbilder (2400×1600): Ansichten, Trinköffnung, Transparenz, Schnitt, Schraubboden, Explosion, Druckteile |
+| `video/bierdose_aschenbecher.mp4` | 3D-Produktanimation, 7 Szenen, 56 s, 1920×1080, 30 fps |
 | `viewer/index.html` | Interaktives 3D-Modell (drehen, zoomen, Schnitt, Explosion, Boden abschrauben) |
 
 Fusion 360 kann STEP direkt öffnen (*Datei → Öffnen → STEP*). Eine native `.f3d`-Datei lässt sich ausserhalb von
