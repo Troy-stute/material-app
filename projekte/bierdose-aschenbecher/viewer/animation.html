@@ -57,8 +57,8 @@ const K = [
   [12, 5, 140, 0, 385, 32, 190], [15, 9, 160, 0, 440, 46, 100], [18, 11, 161, 0, 452, 42, 86],
   [21, 10, 158, 0, 462, 38, 96], [24, 0, 95, 0, 395, 15, 300], [27, 0, 80, 0, 382, 12, 275],
   [30, 0, 55, 0, 380, 8, 225], [33, 0, 60, 0, 395, 5, 280], [37, 0, 48, 0, 410, 3, 250],
-  [39, 0, 62, 0, 415, 7, 300], [42, 0, 108, 0, 425, 12, 480], [46, 0, 104, 0, 415, 12, 460],
-  [49.5, 0, 84, 0, 392, 12, 350], [56, 0, 84, 0, 385, 12, 345],
+  [39, 0, 62, 0, 415, 7, 300], [42, 0, 122, 0, 425, 22, 560], [46, 0, 118, 0, 415, 20, 540],
+  [49.5, 0, 84, 0, 392, 12, 350], [52.5, 0, 84, 0, 389, 12, 350], [56, 68, 84, -32, 385, 12, 420],
 ];
 function kamera(t) {
   let i = K.findIndex((k, j) => j < K.length - 1 && t >= k[0] && t <= K[j + 1][0]);
@@ -154,12 +154,12 @@ function renderAt(t) {
   // Szene 6: Explosion
   if (t >= 39) {
     lift = lerp(35, 62, es(t, 39, 41.5));
-    bodenZ = -lift; laschenZ = lerp(0, 52, es(t, 39.5, 42));
+    bodenZ = -lift; laschenZ = lerp(0, 32, es(t, 39.5, 42));
   }
   // Szene 7: zusammenbauen + Drehung
   if (t >= 46) {
     lift = lerp(62, 0, es(t, 46, 49.5));
-    laschenZ = lerp(52, 0, es(t, 46, 47.6));
+    laschenZ = lerp(32, 0, es(t, 46, 47.6));
     const r0 = -(FREI / P + 0.12) * 2 * Math.PI - 0.35;
     const a1 = es(t, 46, 47.6), a2 = es(t, 47.6, 49.4);
     bodenZ = a2 > 0 ? lerp(-FREI - 0.12 * P, 0, a2) : lerp(-62, -FREI - 0.12 * P, a1);
@@ -168,7 +168,7 @@ function renderAt(t) {
   }
   dose.position.y = lift;
   teile.boden.position.z = bodenZ; teile.boden.rotation.z = bodenRot;
-  teile.lasche.position.z = laschenZ; teile.lasche.rotation.z = -0.25 * seg(laschenZ, 0, 52);
+  teile.lasche.position.z = laschenZ; teile.lasche.rotation.z = -0.25 * seg(laschenZ, 0, 32);
   welt.rotation.y = weltRot;
 
   // Szene 4: Transparenz und Schnitt
@@ -182,6 +182,7 @@ function renderAt(t) {
   stummelGruppe.visible = t > 20.8 && t < 30.3;
   fallPose(t);
 
+  scene.updateMatrixWorld(); cam.updateMatrixWorld();
   caption(t);
   label('l-rumpf', teile.rumpf, new THREE.Vector3(48, 50, 0), t, 41.8, 45.8);
   label('l-lasche', teile.lasche, new THREE.Vector3(30, 162, 0), t, 42.2, 45.8);
@@ -217,8 +218,8 @@ function still(name) {
       setzeKamera(cam, Z(0, 40, 0), 25, 6, 230);
     },
     explosion: () => {
-      dose.position.y = 62; teile.boden.position.z = -62; teile.lasche.position.z = 52; teile.lasche.rotation.z = -0.25;
-      setzeKamera(cam, Z(0, 108, 0), 425 - 360, 12, 480);
+      dose.position.y = 62; teile.boden.position.z = -62; teile.lasche.position.z = 32; teile.lasche.rotation.z = -0.25;
+      setzeKamera(cam, Z(0, 122, 0), 425 - 360, 22, 560); scene.updateMatrixWorld(); cam.updateMatrixWorld();
       label('l-rumpf', teile.rumpf, new THREE.Vector3(48, 50, 0), 44, 0, 99);
       label('l-lasche', teile.lasche, new THREE.Vector3(30, 162, 0), 44, 0, 99);
       label('l-boden', teile.boden, new THREE.Vector3(46, 10, 0), 44, 0, 99);
