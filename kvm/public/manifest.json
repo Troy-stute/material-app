@@ -1,0 +1,13 @@
+{
+  "name": "KVM-Matrix",
+  "short_name": "KVM",
+  "description": "IHSE Draco tera Matrix im lokalen Netzwerk schalten",
+  "lang": "de-CH",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f3f5f8",
+  "theme_color": "#1f5fbf",
+  "icons": [{ "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }]
+}

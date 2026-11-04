@@ -126,6 +126,27 @@ function enterArea(name) {
 document.querySelectorAll('[data-area]').forEach((b) => b.addEventListener('click', () => enterArea(b.dataset.area)));
 $('#btnHome').addEventListener('click', goHome);
 
+// KVM-Matrix: läuft über die Brücke auf einem PC im selben Netzwerk (kvm/bridge.js)
+const KVM_KEY = 'kvm-bridge-url';
+function kvmAskUrl() {
+  const cur = localStorage.getItem(KVM_KEY) || 'http://192.168.1.50:8090';
+  const u = prompt('Adresse der KVM-Brücke (wird beim Start der Brücke angezeigt):', cur);
+  if (!u) return null;
+  const url = /^https?:\/\//.test(u.trim()) ? u.trim() : 'http://' + u.trim();
+  localStorage.setItem(KVM_KEY, url);
+  return url;
+}
+function kvmSub() {
+  const u = localStorage.getItem(KVM_KEY);
+  $('#homeKvmSub').textContent = u ? u.replace(/^https?:\/\//, '') + ' · lange drücken zum Ändern' : 'Draco tera im Netzwerk schalten';
+}
+$('#homeKvm').addEventListener('click', () => {
+  const url = localStorage.getItem(KVM_KEY) || kvmAskUrl();
+  if (url) location.href = url;
+});
+$('#homeKvm').addEventListener('contextmenu', (e) => { e.preventDefault(); kvmAskUrl(); kvmSub(); });
+kvmSub();
+
 // Unterseiten, die in der Navigation zu einem Tab gehören
 const NAV_PARENT = { projekt: 'projekte' };
 

@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="de-CH">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f5fbf">
+<title>KVM-Matrix</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg">
+<style>
+  :root {
+    --bg: #f3f5f8; --card: #ffffff; --text: #1a1f29; --muted: #6b7482;
+    --line: #dde2ea; --accent: #1f5fbf; --accent-soft: #e3ecfa; --accent-text: #ffffff;
+    --ok: #1f8a4c; --ok-soft: #e1f3e8; --warn: #b26a00; --warn-soft: #fdf0dc; --danger: #c43d3d; --danger-soft: #fbe7e7;
+    --shadow: 0 1px 3px rgba(20,30,50,.08), 0 4px 14px rgba(20,30,50,.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12151b; --card: #1c2029; --text: #e8ebf0; --muted: #98a1ae;
+      --line: #2c323d; --accent: #5b9bff; --accent-soft: #1f2d45; --accent-text: #0b1220;
+      --ok: #4cc47f; --ok-soft: #1a3326; --warn: #f0b44c; --warn-soft: #3a2e1a; --danger: #ff6b6b; --danger-soft: #3a1f22;
+      --shadow: 0 1px 3px rgba(0,0,0,.4);
+    }
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header { position: sticky; top: 0; z-index: 5; background: #1f5fbf; color: #fff;
+    padding: calc(12px + env(safe-area-inset-top)) 16px 12px; display: flex; align-items: center; gap: 10px; }
+  header h1 { font-size: 18px; margin: 0; font-weight: 650; }
+  header .sub { font-size: 13px; opacity: .85; }
+  .iconbtn { border: 0; background: rgba(255,255,255,.15); color: #fff; width: 40px; height: 40px; border-radius: 12px;
+    display: grid; place-items: center; flex: none; }
+  .iconbtn svg { width: 20px; height: 20px; }
+  .iconbtn.spin svg { animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  main { padding: 16px; max-width: 640px; margin: 0 auto; padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
+
+  .banner { border-radius: 12px; padding: 10px 14px; font-size: 14px; margin-bottom: 12px; }
+  .banner.err { background: var(--danger-soft); color: var(--danger); }
+  .banner.warn { background: var(--warn-soft); color: var(--warn); }
+
+  .seg { display: flex; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 3px; gap: 3px; }
+  .seg button { flex: 1; border: 0; background: transparent; color: var(--text); padding: 9px; border-radius: 9px; font-size: 15px; font-weight: 550; }
+  .seg button.on { background: var(--accent); color: var(--accent-text); }
+
+  .search { width: 100%; margin: 12px 0; padding: 11px 14px; border: 1px solid var(--line); border-radius: 12px;
+    background: var(--card); color: var(--text); font-size: 16px; }
+
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 18px 0 8px; font-weight: 600; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); overflow: hidden; }
+  .row { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-top: 1px solid var(--line);
+    width: 100%; background: transparent; border-left: 0; border-right: 0; border-bottom: 0; color: var(--text); text-align: left; font: inherit; }
+  .row:first-child { border-top: 0; }
+  button.row:active { background: var(--accent-soft); }
+  .row .main { flex: 1; min-width: 0; }
+  .row .title, .row .meta { display: block; }
+  .row .title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row .meta { font-size: 14px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row .meta b { color: var(--text); font-weight: 550; }
+  .row.off { opacity: .45; }
+  .chev { color: var(--muted); font-size: 22px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; background: var(--line); }
+  .dot.on { background: var(--ok); }
+  .badge { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px; flex: none; }
+  .badge.full { background: var(--ok-soft); color: var(--ok); }
+  .badge.video { background: var(--accent-soft); color: var(--accent); }
+  .badge.private { background: var(--warn-soft); color: var(--warn); }
+  .star { border: 0; background: transparent; color: var(--muted); font-size: 22px; padding: 4px; line-height: 1; }
+  .star.on { color: #e0a100; }
+  .empty { color: var(--muted); text-align: center; padding: 24px 12px; }
+
+  .backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 20; opacity: 0; pointer-events: none; transition: opacity .2s; }
+  .backdrop.open { opacity: 1; pointer-events: auto; }
+  .sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 21; background: var(--bg);
+    border-radius: 18px 18px 0 0; padding: 10px 16px calc(16px + env(safe-area-inset-bottom));
+    max-height: 88vh; display: flex; flex-direction: column; transform: translateY(105%); transition: transform .22s ease; max-width: 640px; margin: 0 auto; }
+  .sheet.open { transform: none; }
+  .sheet .grab { width: 40px; height: 4px; border-radius: 2px; background: var(--line); margin: 4px auto 10px; flex: none; }
+  .sheet h3 { margin: 0; font-size: 20px; }
+  .sheet .now { color: var(--muted); font-size: 14px; margin: 2px 0 10px; }
+  .sheet .scroll { overflow-y: auto; flex: 1; min-height: 0; margin: 0 -16px; padding: 0 16px; }
+  .btn { border: 0; border-radius: 12px; padding: 12px 16px; font-size: 16px; font-weight: 600; }
+  .btn.danger { background: var(--danger-soft); color: var(--danger); }
+  .btn.plain { background: var(--card); color: var(--text); border: 1px solid var(--line); }
+  .btns { display: flex; gap: 10px; margin-top: 12px; flex: none; }
+  .btns .btn { flex: 1; }
+  .row.current { background: var(--accent-soft); }
+
+  .toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); transform: translateX(-50%) translateY(20px);
+    background: #1a1f29; color: #fff; padding: 10px 16px; border-radius: 12px; font-size: 15px; opacity: 0;
+    transition: all .2s; z-index: 30; pointer-events: none; max-width: calc(100% - 32px); }
+  .toast.show { opacity: 1; transform: translateX(-50%); }
+  .toast.err { background: var(--danger); }
+</style>
+</head>
+<body>
+<header>
+  <div style="flex:1;min-width:0">
+    <h1>KVM-Matrix</h1>
+    <div class="sub" id="status">Verbinde …</div>
+  </div>
+  <button class="iconbtn" id="btnRefresh" aria-label="Namen neu laden">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>
+  </button>
+</header>
+
+<main>
+  <div id="banner"></div>
+  <div class="seg" id="tabs">
+    <button data-tab="cons" class="on">Arbeitsplätze</button>
+    <button data-tab="cpus">Rechner</button>
+  </div>
+  <input class="search" id="q" type="search" placeholder="Suchen …" autocomplete="off">
+  <div id="list"></div>
+</main>
+
+<div class="backdrop" id="backdrop"></div>
+<div class="sheet" id="sheet"></div>
+<div class="toast" id="toast"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
