@@ -34,3 +34,16 @@ Kleiner Trinkbecher-Look: unten verjüngt (passt in Auto-Getränkehalter), zwei 
 | `tumbler_250slim.stl` | 250 ml Slim | 58 / 71 × 121 mm |
 
 Druck wie oben: aufrecht, ohne Stützen. Im Customizer lassen sich unter anderem `bauch` (wie viel breiter der Becher oben ist), `konus_h` und `ring_h` einstellen.
+
+## Variante: Quencher-Form (`quencher.scad`)
+
+![Quencher mit Dose](vorschau_quencher_mit_dose.png)
+
+Die Form des bekannten Trinkbechers mit Henkel, verkleinert, sodass eine Dose hineinpasst: schmaler Fuss, weicher Übergang zum breiten Oberteil, Deckelring mit Fuge und erhöhtem Rand, grosser Henkel. Die Dose schaut oben 12 mm heraus, damit man trinken kann (oder mit Strohhalm).
+
+| Datei | Dose | Ø Fuss / oben × Höhe |
+|---|---|---|
+| `quencher_redbull250.stl` | Red Bull 250 ml (Ø 53 × 134 mm) | 58 / 75 × 124 mm |
+| `quencher_330.stl` | 330 ml Standard | 71 / 92 × 105 mm |
+
+**Druck:** aufrecht. Der untere Henkelarm hängt in der Luft und braucht **Stützen** (im Slicer „Stützen nur auf dem Druckbett“ bzw. Baumstützen). Der Rest druckt ohne. Im Customizer lassen sich Proportionen (`verhaeltnis`, Übergangshöhe) und der Henkel anpassen.
