@@ -20,3 +20,17 @@ Becher, der die Dose rundum umschliesst, mit seitlichem Henkel. Oben bleiben 15 
 
 ## Anpassen
 `dosenhalter.scad` in OpenSCAD öffnen. Im Customizer kann man Dosentyp, eigene Masse, Wandstärke und Henkelgrösse einstellen. Danach F6 drücken und als STL exportieren.
+
+## Variante: Tumbler-Stil (`tumbler.scad`)
+
+![Vorschau Tumbler](vorschau_tumbler_330.png)
+
+Kleiner Trinkbecher-Look: unten verjüngt (passt in Auto-Getränkehalter), zwei Zierrillen, breiter Deckelring oben und ein kräftiger Henkel, dessen Fuss auf dem Druckbett steht. Dose, Klemmrippen und Bodenloch wie oben.
+
+| Datei | Dose | Ø unten / oben × Höhe |
+|---|---|---|
+| `tumbler_330.stl` | 330 ml | 71 / 84 × 102 mm |
+| `tumbler_500.stl` | 500 ml | 71 / 84 × 155 mm |
+| `tumbler_250slim.stl` | 250 ml Slim | 58 / 71 × 121 mm |
+
+Druck wie oben: aufrecht, ohne Stützen. Im Customizer lassen sich unter anderem `bauch` (wie viel breiter der Becher oben ist), `konus_h` und `ring_h` einstellen.
