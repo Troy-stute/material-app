@@ -38,6 +38,16 @@ henkel_arm = 10;
 // Kantenrundung des Henkels
 henkel_rundung = 2;
 
+/* [Name im Henkel] */
+// Name, der aussen in den Griff eingeprägt wird (leer = kein Name)
+name = "";
+// Schriftgrösse in mm (wird bei langen Namen automatisch kleiner)
+schrift = 7;
+// Tiefe der Prägung in mm
+praege_tiefe = 0.8;
+// Schriftart (muss auf dem Computer installiert sein)
+schriftart = "Liberation Sans:style=Bold";
+
 /* [Hidden] */
 $fn = 120;
 e = 0.01;
@@ -60,6 +70,7 @@ module becher() {
     }
     // Innenraum mit Einführfase oben
     translate([0, 0, boden]) cylinder(r = ri, h = H);
+    name_gravur(ro + henkel_weite + henkel_griff, 8, H - 4 - 8);
     translate([0, 0, H - 1.5]) cylinder(r1 = ri, r2 = ri + 1.2, h = 1.5 + e);
     // Bodenloch mit Fase
     if (boden_loch > 0) {
@@ -108,6 +119,18 @@ module henkel() {
     }
     // nichts unter das Bett, nichts in den Innenraum
     translate([0, -50, 0]) cube([x2 + 10, 100, zt + 5]);
+  }
+}
+
+
+// Name senkrecht in die Aussenseite des Griffs prägen (liest sich von unten nach oben)
+module name_gravur(x2, za, zb) {
+  if (name != "") {
+    L = zb - za - 4;
+    f = min(1, L / (0.68 * schrift * len(name)));
+    translate([x2 - praege_tiefe, 0, (za + zb) / 2]) rotate([90, 0, 90])
+      linear_extrude(height = praege_tiefe + 1)
+        rotate(90) scale(f) text(name, size = schrift, font = schriftart, halign = "center", valign = "center", $fn = 32);
   }
 }
 

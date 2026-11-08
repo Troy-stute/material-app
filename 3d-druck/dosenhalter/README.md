@@ -51,3 +51,9 @@ Die Form des bekannten Trinkbechers mit Henkel, verkleinert, sodass eine Dose hi
 ## 3D-Ansicht
 
 `3d-ansicht.html` im Browser öffnen (Doppelklick). Darin lassen sich alle Varianten drehen und zoomen, mit eingeblendeter Dose und Schnittansicht. Die Modelle sind in der Datei enthalten, nur die 3D-Bibliothek (three.js) wird aus dem Internet geladen.
+
+## Name im Henkel
+
+In allen drei `.scad`-Dateien kann im Customizer unter „Name im Henkel“ ein Name eingetragen werden. Er wird 0,8 mm tief senkrecht in die Aussenseite des Griffs geprägt (liest sich von unten nach oben) und bei langen Namen automatisch verkleinert. Druckt ohne Stützen.
+
+![Name im Henkel](vorschau_name_im_henkel.png)
