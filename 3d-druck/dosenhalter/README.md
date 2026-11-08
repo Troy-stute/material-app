@@ -47,3 +47,7 @@ Die Form des bekannten Trinkbechers mit Henkel, verkleinert, sodass eine Dose hi
 | `quencher_330.stl` | 330 ml Standard | 71 / 92 × 105 mm |
 
 **Druck:** aufrecht. Der untere Henkelarm hängt in der Luft und braucht **Stützen** (im Slicer „Stützen nur auf dem Druckbett“ bzw. Baumstützen). Der Rest druckt ohne. Im Customizer lassen sich Proportionen (`verhaeltnis`, Übergangshöhe) und der Henkel anpassen.
+
+## 3D-Ansicht
+
+`3d-ansicht.html` im Browser öffnen (Doppelklick). Darin lassen sich alle Varianten drehen und zoomen, mit eingeblendeter Dose und Schnittansicht. Die Modelle sind in der Datei enthalten, nur die 3D-Bibliothek (three.js) wird aus dem Internet geladen.
